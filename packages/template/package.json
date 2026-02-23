@@ -1,0 +1,20 @@
+{
+  "name": "__APP_SLUG__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:native-effects": "bash scripts/build-macos-effects.sh",
+    "dev": "bun run build:dev && electrobun dev",
+    "build:dev": "bun run build:native-effects && electrobun build",
+    "build:canary": "bun run build:native-effects && electrobun build --env=canary",
+    "build:stable": "bun run build:native-effects && electrobun build --env=stable"
+  },
+  "dependencies": {
+    "electrobun": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}

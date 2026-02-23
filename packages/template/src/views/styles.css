@@ -1,0 +1,22 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  background: transparent;
+  color: #f4f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: transparent;
+  height: 100vh;
+}
+
+.webview {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

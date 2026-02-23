@@ -1,0 +1,16 @@
+{
+  "name": "buke",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "cli": "bun run packages/cli/src/index.ts",
+    "build:cli": "bun run --cwd packages/cli build",
+    "dev": "bun run --cwd packages/cli dev",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4"
+  }
+}

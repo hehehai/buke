@@ -1,0 +1,13 @@
+{
+  "name": "@buke/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "buke": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun"
+  }
+}
