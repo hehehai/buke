@@ -35,7 +35,7 @@ buke build [--cwd <dir>] [--env dev|canary|stable]
 - Template is optimized for lightweight builds via system WebView.
 - `buke.config.json` supports window sizing, tray options, safe-area padding, injection, allowlist, zoom, and partition.
 - `buke pack` builds in a temp directory and outputs to `./dist/<slug>` by default (`--force` overwrites).
-- macOS: native blur + traffic lights via `native/macos/window-effects.mm`.
+- macOS: safe-area padding keeps content away from traffic lights.
 - Electrobun APIs are evolving; keep template in sync with upstream docs.
 
 ### Common flags

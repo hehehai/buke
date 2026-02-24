@@ -6,6 +6,8 @@
       "name": "buke",
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
+        "@types/bun": "^1.3.9",
+        "typescript": "^5.9.3",
       },
     },
     "packages/cli": {

@@ -20,7 +20,6 @@ export default {
     copy: {
       "src/views/index.html": "views/main/index.html",
       "src/views/styles.css": "views/main/styles.css",
-      "src/bun/libMacWindowEffects.dylib": "bun/libMacWindowEffects.dylib",
       "buke.config.json": "buke.config.json",
       "inject/custom.css": "inject/custom.css",
       "inject/custom.js": "inject/custom.js",

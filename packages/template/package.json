@@ -4,11 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:native-effects": "bash scripts/build-macos-effects.sh",
     "dev": "bun run build:dev && electrobun dev",
-    "build:dev": "bun run build:native-effects && electrobun build",
-    "build:canary": "bun run build:native-effects && electrobun build --env=canary",
-    "build:stable": "bun run build:native-effects && electrobun build --env=stable"
+    "build:dev": "electrobun build",
+    "build:canary": "electrobun build --env=canary",
+    "build:stable": "electrobun build --env=stable"
   },
   "dependencies": {
     "electrobun": "*"

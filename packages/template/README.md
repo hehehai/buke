@@ -14,7 +14,6 @@ bun run dev
 - `buke.config.json` stores the original URL and metadata.
 - Window/tray/network options are stored in `buke.config.json`.
 - `inject/custom.css` / `inject/custom.js` can be listed in `buke.config.json` for CSS/JS injection.
-- On macOS, the template builds a native blur dylib via `scripts/build-macos-effects.sh`.
 - macOS safe area padding defaults to `top=28` / `left=12` to avoid traffic light overlap.
   - Override via CLI: `--safe-top 32 --safe-left 14` or disable with `--safe-off`.
   - `--show-title-bar` toggles the native macOS title bar (default hidden).
