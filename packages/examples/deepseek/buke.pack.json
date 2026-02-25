@@ -1,0 +1,13 @@
+{
+  "name": "DeepSeek",
+  "id": "com.buke.deepseek",
+  "url": "https://chat.deepseek.com",
+  "partition": "persist:deepseek",
+  "macosSafeArea": {
+    "enabled": true,
+    "top": 12,
+    "left": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

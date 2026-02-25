@@ -12,11 +12,23 @@ export default {
   },
   build: {
     bun: {
-      entrypoint: "src/bun/index.ts"
+      entrypoint: "src/bun/index.ts",
+      minify: true,
+      sourcemap: "none"
+    },
+    useAsar: true,
+    macos: {
+      bundleCEF: false
+    },
+    win: {
+      bundleCEF: false,
+      ...(winIcon ? { icon: winIcon } : {})
+    },
+    linux: {
+      bundleCEF: false,
+      ...(linuxIcon ? { icon: linuxIcon } : {})
     },
     ...(macIcon ? { mac: { icons: macIcon } } : {}),
-    ...(winIcon ? { win: { icon: winIcon } } : {}),
-    ...(linuxIcon ? { linux: { icon: linuxIcon } } : {}),
     copy: {
       "src/views/index.html": "views/main/index.html",
       "src/views/styles.css": "views/main/styles.css",
@@ -25,6 +37,9 @@ export default {
       "inject/custom.js": "inject/custom.js",
       assets: "assets"
     }
+  },
+  scripts: {
+    postPackage: "scripts/optimize-package.ts"
   },
   runtime: {
     exitOnLastWindowClosed: false

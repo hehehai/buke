@@ -1,0 +1,13 @@
+{
+  "name": "Excalidraw",
+  "id": "com.buke.excalidraw",
+  "url": "https://excalidraw.com",
+  "partition": "persist:excalidraw",
+  "macosSafeArea": {
+    "enabled": true,
+    "top": 12,
+    "left": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

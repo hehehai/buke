@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Buke Pack Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "App display name."
+    },
+    "id": {
+      "type": "string",
+      "description": "Bundle identifier (e.g. com.example.app)."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Web app URL to wrap."
+    },
+    "partition": {
+      "type": "string",
+      "description": "Webview session partition (e.g. persist:default)."
+    },
+    "icon": {
+      "type": "string",
+      "description": "App icon path or URL."
+    },
+    "outDir": {
+      "type": "string",
+      "description": "Output directory for pack command."
+    },
+    "env": {
+      "type": "string",
+      "enum": ["dev", "canary", "stable"],
+      "description": "Electrobun build environment."
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "minWidth": { "type": "number" },
+        "minHeight": { "type": "number" },
+        "hideTitleBar": { "type": "boolean" }
+      },
+      "description": "Window size and title bar options."
+    },
+    "tray": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "icon": { "type": "string" },
+        "hideOnClose": { "type": "boolean" }
+      },
+      "description": "System tray settings."
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userAgent": { "type": "string" },
+        "proxyUrl": { "type": "string" }
+      },
+      "description": "Webview network overrides."
+    },
+    "macosSafeArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "top": { "type": "number" },
+        "left": { "type": "number" },
+        "right": { "type": "number" },
+        "bottom": { "type": "number" }
+      },
+      "description": "macOS safe-area padding."
+    }
+  }
+}

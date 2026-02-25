@@ -41,3 +41,13 @@ export function parseNumberFlag(value: string | boolean | undefined, fallback: n
   }
   return fallback;
 }
+
+export function resolveAssetPath(value: string | undefined, baseDir: string) {
+  if (!value) {
+    return undefined;
+  }
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+  return path.isAbsolute(value) ? value : path.resolve(baseDir, value);
+}

@@ -10,7 +10,7 @@
     "build:stable": "electrobun build --env=stable"
   },
   "dependencies": {
-    "electrobun": "*"
+    "electrobun": "latest"
   },
   "devDependencies": {
     "@types/bun": "latest",

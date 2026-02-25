@@ -13,10 +13,16 @@ bun install
 bun run dev
 ```
 
+## Version sync
+
+- Electrobun dependency follows npm `latest` (currently `1.14.4` as of **2026-02-25**).
+- If you need to lock a specific Electrobun version, change `packages/template/package.json`.
+
 ## Repo layout
 
 - `packages/cli` – Bun-based CLI to scaffold and build apps.
 - `packages/template` – Electrobun app template used by `buke init`.
+- `packages/examples` – Pack config samples for popular sites.
 - `docs/roadmap.md` – Phased feature roadmap and delivery plan.
 
 ## CLI
@@ -29,6 +35,13 @@ buke pack <url> [--name <AppName>] [--out <dir>] [--id <bundleId>] [--env dev|ca
 buke dev [--cwd <dir>]
 buke build [--cwd <dir>] [--env dev|canary|stable]
 ```
+
+## Docs
+
+- `docs/guide.en.md` – English configuration guide.
+- `docs/guide.zh.md` – 中文配置指南。
+- `docs/buke.schema.json` – JSON schema for pack configs.
+- `packages/examples` – Ready-to-use `buke.pack.json` samples.
 
 ## Notes
 

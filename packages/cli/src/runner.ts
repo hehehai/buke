@@ -12,8 +12,16 @@ export async function runBunScript(cwd: string, script: string) {
   }
 }
 
-export async function runBunInstall(cwd: string) {
-  const proc = Bun.spawn(["bun", "install", "--no-cache", "--no-progress"], {
+export async function runBunInstall(
+  cwd: string,
+  options: { production?: boolean } = {}
+) {
+  const args = ["bun", "install", "--no-cache", "--no-progress"];
+  if (options.production) {
+    args.push("--production");
+  }
+
+  const proc = Bun.spawn(args, {
     cwd,
     stdin: "inherit",
     stdout: "inherit",

@@ -12,7 +12,6 @@ import { buildMenu, handleMenuAction } from "./menu";
 import { setupTray } from "./tray";
 import {
   applyInjectionAssets,
-  applySafeAreaCss,
   applyUserAgentOverride,
   applyZoom,
   buildNavigationRules,
@@ -64,10 +63,6 @@ const injectionAssets = await loadInjectionAssets(
   bukeConfig.inject ?? DEFAULT_CONFIG.inject,
   configDir,
 );
-const macosSafeArea = {
-  ...DEFAULT_CONFIG.macosSafeArea,
-  ...(bukeConfig.macosSafeArea ?? {}),
-};
 
 const session = Session.fromPartition(APP_PARTITION);
 
@@ -154,9 +149,6 @@ const adjustZoom = (direction: "in" | "out" | "reset") => {
 };
 
 const applyInjection = (webview: BrowserView) => {
-  if (isMacOS) {
-    applySafeAreaCss(webview, macosSafeArea, macosSafeArea.enabled);
-  }
   applyInjectionAssets(webview, injectionAssets);
 };
 
@@ -265,7 +257,7 @@ function createMainWindow() {
   const initialHeight = Math.max(windowConfig.height, windowConfig.minHeight);
   const titleBarStyle = isMacOS
     ? windowConfig.hideTitleBar
-      ? "hiddenInset"
+      ? "hidden"
       : "default"
     : "default";
 

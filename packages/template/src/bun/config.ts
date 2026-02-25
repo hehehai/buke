@@ -76,9 +76,9 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
     proxyUrl: ""
   },
   macosSafeArea: {
-    enabled: true,
-    top: 28,
-    left: 12,
+    enabled: false,
+    top: 0,
+    left: 0,
     right: 0,
     bottom: 0
   }

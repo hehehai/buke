@@ -1,0 +1,13 @@
+{
+  "name": "WeRead",
+  "id": "com.buke.weread",
+  "url": "https://weread.qq.com",
+  "partition": "persist:weread",
+  "macosSafeArea": {
+    "enabled": true,
+    "top": 12,
+    "left": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

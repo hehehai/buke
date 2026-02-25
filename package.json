@@ -9,7 +9,15 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",
-    "typecheck": "bunx tsc -p tsconfig.json --noEmit"
+    "typecheck": "bunx tsc -p tsconfig.json --noEmit",
+    "pack:kimi": "bun run packages/cli/src/index.ts pack --config packages/examples/kimi/buke.pack.json --force",
+    "pack:weread": "bun run packages/cli/src/index.ts pack --config packages/examples/weread/buke.pack.json --force",
+    "pack:twitter": "bun run packages/cli/src/index.ts pack --config packages/examples/twitter/buke.pack.json --force",
+    "pack:deepseek": "bun run packages/cli/src/index.ts pack --config packages/examples/deepseek/buke.pack.json --force",
+    "pack:youtube": "bun run packages/cli/src/index.ts pack --config packages/examples/youtube/buke.pack.json --force",
+    "pack:youtube-music": "bun run packages/cli/src/index.ts pack --config packages/examples/youtube-music/buke.pack.json --force",
+    "pack:excalidraw": "bun run packages/cli/src/index.ts pack --config packages/examples/excalidraw/buke.pack.json --force",
+    "pack:xiaohongshu": "bun run packages/cli/src/index.ts pack --config packages/examples/xiaohongshu/buke.pack.json --force"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

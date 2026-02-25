@@ -1,14 +1,6 @@
 import type { BrowserView } from "electrobun/bun";
 import type { InjectionAssets } from "./config";
 
-export type SafeAreaConfig = {
-  enabled: boolean;
-  top: number;
-  left: number;
-  right: number;
-  bottom: number;
-};
-
 export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
   const rules = ["^*"];
   const addRule = (rule: string) => {
@@ -76,32 +68,6 @@ export function applyUserAgentOverride(webview: BrowserView, userAgentOverride: 
       });
     } catch (error) {}
   })();`;
-  webview.executeJavascript(script);
-}
-
-export function applySafeAreaCss(webview: BrowserView, safeArea: SafeAreaConfig, enabled: boolean) {
-  if (!enabled) {
-    return;
-  }
-
-  const safeCss = [
-    ":root {",
-    `  --buke-safe-top: ${safeArea.top}px;`,
-    `  --buke-safe-left: ${safeArea.left}px;`,
-    `  --buke-safe-right: ${safeArea.right}px;`,
-    `  --buke-safe-bottom: ${safeArea.bottom}px;`,
-    "}",
-    "html, body {",
-    "  box-sizing: border-box;",
-    "  padding-top: var(--buke-safe-top);",
-    "  padding-left: var(--buke-safe-left);",
-    "  padding-right: var(--buke-safe-right);",
-    "  padding-bottom: var(--buke-safe-bottom);",
-    "}"
-  ].join("\n");
-  const script = `(() => { const id='buke-macos-safe-area'; let el=document.getElementById(id); if(!el){ el=document.createElement('style'); el.id=id; document.head.appendChild(el);} el.textContent=${JSON.stringify(
-    safeCss
-  )}; })();`;
   webview.executeJavascript(script);
 }
 

@@ -1,5 +1,5 @@
 import type { Flags } from "./args";
-import { normalizeUrl, parseNumberFlag, slugify } from "./helpers";
+import { normalizeUrl, parseNumberFlag, resolveAssetPath, slugify } from "./helpers";
 
 export type SafeAreaConfig = {
   enabled: boolean;
@@ -28,6 +28,20 @@ export type NetworkConfig = {
   proxyUrl?: string;
 };
 
+export type PackConfigFile = {
+  name?: string;
+  id?: string;
+  url?: string;
+  partition?: string;
+  icon?: string;
+  outDir?: string;
+  env?: string;
+  window?: Partial<WindowConfig>;
+  tray?: Partial<TrayConfig>;
+  network?: Partial<NetworkConfig>;
+  macosSafeArea?: Partial<SafeAreaConfig>;
+};
+
 export type ProjectInfo = {
   normalizedUrl: string;
   appName: string;
@@ -41,14 +55,20 @@ export type ProjectInfo = {
   icon?: string;
 };
 
-export function deriveProjectInfo(urlInput: string, flags: Flags): ProjectInfo {
+export function deriveProjectInfo(
+  urlInput: string,
+  flags: Flags,
+  config?: PackConfigFile,
+  configDir: string = process.cwd()
+): ProjectInfo {
   const normalizedUrl = normalizeUrl(urlInput);
   const url = new URL(normalizedUrl);
   const defaultName = url.hostname.replace(/^www\./, "");
-  const appName = (flags.name as string) ?? defaultName;
+  const appName = (flags.name as string) ?? config?.name ?? defaultName;
   const slug = slugify(appName);
-  const appId = (flags.id as string) ?? `com.buke.${slug}`;
-  const partition = (flags.partition as string) ?? "persist:default";
+  const appId = (flags.id as string) ?? config?.id ?? `com.buke.${slug}`;
+  const partition = (flags.partition as string) ?? config?.partition ?? "persist:default";
+  const iconInput = typeof flags.icon === "string" ? flags.icon : config?.icon;
 
   return {
     normalizedUrl,
@@ -56,54 +76,110 @@ export function deriveProjectInfo(urlInput: string, flags: Flags): ProjectInfo {
     slug,
     appId,
     partition,
-    safeArea: deriveSafeArea(flags),
-    window: deriveWindow(flags),
-    tray: deriveTray(flags),
-    network: deriveNetwork(flags),
-    icon: typeof flags.icon === "string" ? flags.icon : undefined
+    safeArea: deriveSafeArea(flags, config),
+    window: deriveWindow(flags, config),
+    tray: deriveTray(flags, config, configDir),
+    network: deriveNetwork(flags, config),
+    icon: resolveAssetPath(iconInput, configDir)
   };
 }
 
-export function deriveSafeArea(flags: Flags): SafeAreaConfig {
-  const enabled = !flags["safe-off"];
-  const top = parseNumberFlag(flags["safe-top"], 28);
-  const left = parseNumberFlag(flags["safe-left"], 12);
-  const right = parseNumberFlag(flags["safe-right"], 0);
-  const bottom = parseNumberFlag(flags["safe-bottom"], 0);
+export function deriveSafeArea(flags: Flags, config?: PackConfigFile): SafeAreaConfig {
+  const hasFlagOverrides =
+    flags["safe-top"] !== undefined ||
+    flags["safe-left"] !== undefined ||
+    flags["safe-right"] !== undefined ||
+    flags["safe-bottom"] !== undefined ||
+    flags["safe-off"] !== undefined;
+
+  if (hasFlagOverrides) {
+    const top = parseNumberFlag(flags["safe-top"], 0);
+    const left = parseNumberFlag(flags["safe-left"], 0);
+    const right = parseNumberFlag(flags["safe-right"], 0);
+    const bottom = parseNumberFlag(flags["safe-bottom"], 0);
+    const hasOverrides =
+      flags["safe-top"] !== undefined ||
+      flags["safe-left"] !== undefined ||
+      flags["safe-right"] !== undefined ||
+      flags["safe-bottom"] !== undefined;
+    const enabled = Boolean(!flags["safe-off"] && hasOverrides);
+
+    if (!enabled) {
+      return { enabled: false, top: 0, left: 0, right: 0, bottom: 0 };
+    }
+
+    return { enabled, top, left, right, bottom };
+  }
+
+  const configSafe = config?.macosSafeArea;
+  if (!configSafe) {
+    return { enabled: false, top: 0, left: 0, right: 0, bottom: 0 };
+  }
+
+  const top = toNumber(configSafe.top, 0);
+  const left = toNumber(configSafe.left, 0);
+  const right = toNumber(configSafe.right, 0);
+  const bottom = toNumber(configSafe.bottom, 0);
+  const hasOverrides = top !== 0 || left !== 0 || right !== 0 || bottom !== 0;
+  const enabled = typeof configSafe.enabled === "boolean" ? configSafe.enabled : hasOverrides;
+
+  if (!enabled) {
+    return { enabled: false, top: 0, left: 0, right: 0, bottom: 0 };
+  }
 
   return { enabled, top, left, right, bottom };
 }
 
-export function deriveWindow(flags: Flags): WindowConfig {
-  const width = parseNumberFlag(flags.width, 1200);
-  const height = parseNumberFlag(flags.height, 800);
-  const minWidth = parseNumberFlag(flags["min-width"], 960);
-  const minHeight = parseNumberFlag(flags["min-height"], 640);
+export function deriveWindow(flags: Flags, config?: PackConfigFile): WindowConfig {
+  const width = parseNumberFlag(flags.width, toNumber(config?.window?.width, 1200));
+  const height = parseNumberFlag(flags.height, toNumber(config?.window?.height, 800));
+  const minWidth = parseNumberFlag(flags["min-width"], toNumber(config?.window?.minWidth, 960));
+  const minHeight = parseNumberFlag(flags["min-height"], toNumber(config?.window?.minHeight, 640));
   const hideTitleBar = flags["show-title-bar"]
     ? false
     : flags["hide-title-bar"] !== undefined
       ? Boolean(flags["hide-title-bar"])
-      : true;
+      : typeof config?.window?.hideTitleBar === "boolean"
+        ? config.window.hideTitleBar
+        : true;
 
   return { width, height, minWidth, minHeight, hideTitleBar };
 }
 
-export function deriveTray(flags: Flags): TrayConfig {
-  const enabled = Boolean(flags["show-system-tray"]);
-  const icon =
+export function deriveTray(
+  flags: Flags,
+  config?: PackConfigFile,
+  configDir: string = process.cwd()
+): TrayConfig {
+  const enabled =
+    flags["show-system-tray"] !== undefined
+      ? Boolean(flags["show-system-tray"])
+      : Boolean(config?.tray?.enabled);
+  const iconInput =
     typeof flags["system-tray-icon"] === "string"
       ? (flags["system-tray-icon"] as string)
-      : undefined;
-  const hideOnClose = Boolean(flags["hide-on-close"]);
+      : config?.tray?.icon;
+  const hideOnClose =
+    flags["hide-on-close"] !== undefined
+      ? Boolean(flags["hide-on-close"])
+      : Boolean(config?.tray?.hideOnClose);
 
-  return { enabled, icon, hideOnClose };
+  return { enabled, icon: resolveAssetPath(iconInput, configDir), hideOnClose };
 }
 
-export function deriveNetwork(flags: Flags): NetworkConfig {
+export function deriveNetwork(flags: Flags, config?: PackConfigFile): NetworkConfig {
   const userAgent =
-    typeof flags["user-agent"] === "string" ? (flags["user-agent"] as string) : undefined;
+    typeof flags["user-agent"] === "string"
+      ? (flags["user-agent"] as string)
+      : config?.network?.userAgent;
   const proxyUrl =
-    typeof flags["proxy-url"] === "string" ? (flags["proxy-url"] as string) : undefined;
+    typeof flags["proxy-url"] === "string"
+      ? (flags["proxy-url"] as string)
+      : config?.network?.proxyUrl;
 
   return { userAgent, proxyUrl };
+}
+
+function toNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }

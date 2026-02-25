@@ -2,6 +2,8 @@
 
 Buke CLI 用于把任意网页打包成 Electrobun 原生应用（Pake-like 体验），适合快速生成轻量桌面壳。
 
+> Electrobun 版本：跟随 npm `latest`（**2026-02-25** 时为 `1.14.4`）。
+
 ## 系统要求
 
 - **Bun**: `>= 1.3`
@@ -85,6 +87,18 @@ buke pack https://example.com --name Example --force
 - `--env dev|canary|stable`：Electrobun 构建环境
 - `--force`：覆盖已有输出目录
 
+> 打包时默认使用 `bun install --production`，仅安装生产依赖以减小体积。
+
+使用配置文件：
+
+```bash
+buke pack --config ./buke.pack.json
+```
+
+配置文件可配合 JSON Schema（`docs/buke.schema.json`）获得类型提示。
+
+示例配置可参考 `packages/examples`。
+
 ### `buke dev`
 
 进入项目后启动开发模式（Electrobun dev）。
@@ -116,6 +130,7 @@ buke pack https://example.com --name Example --force
 --safe-right         macOS safe-area right padding
 --safe-bottom        macOS safe-area bottom padding
 --safe-off           Disable macOS safe-area padding
+--config             Use pack config JSON
 -t, --template       Template directory override
 -c, --cwd            Run command in target directory
 -e, --env            Build env for release channel
@@ -183,6 +198,7 @@ buke pack https://example.com --name Example --show-title-bar
 - **User-Agent** 仅做 JS 层覆盖（`navigator.userAgent`），网络层 UA 由 WebView 控制。
 - **Proxy** 暂不支持 per-app 代理，`--proxy-url` 仅存储配置（请用系统代理）。
 - **App 体积**：macOS 包内包含 Bun 运行时（约 58MB），体积主要由 Bun 决定。
+- **多平台构建**：Electrobun 构建会生成当前系统平台的包；若要生成 Windows / Linux / macOS Intel，请在对应平台或 CI 环境运行 `buke pack`。
 
 ## 卸载
 

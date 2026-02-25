@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import { cp, mkdtemp, rm } from "node:fs/promises";
 import { parseArgs, printHelp } from "./args";
 import { deriveProjectInfo } from "./config";
+import { loadPackConfig } from "./config-file";
 import { resolveCwd, resolveTemplateDir } from "./helpers";
 import { runBunInstall, runBunScript } from "./runner";
 import { prepareOutDir, scaffoldProject } from "./scaffold";
@@ -75,14 +76,36 @@ async function handlePack(
   flags: Record<string, string | boolean>,
   positionals: string[]
 ) {
-  const urlInput = (flags.url as string) ?? positionals[0];
+  const mutablePositionals = [...positionals];
+  const configFlag = typeof flags.config === "string" ? (flags.config as string) : undefined;
+  let configPath = configFlag;
+  if (!configPath) {
+    const candidate = mutablePositionals[0];
+    if (candidate && candidate.toLowerCase().endsWith(".json")) {
+      const resolved = path.resolve(process.cwd(), candidate);
+      if (existsSync(resolved)) {
+        configPath = candidate;
+        mutablePositionals.shift();
+      }
+    }
+  }
+
+  const loadedConfig = configPath ? await loadPackConfig(configPath) : null;
+  const urlInput =
+    (flags.url as string) ?? mutablePositionals[0] ?? loadedConfig?.config.url;
   if (!urlInput) {
     console.error("Missing URL. Example: buke pack https://example.com");
+    console.error("Or use: buke pack --config ./buke.pack.json");
     process.exit(1);
   }
 
-  const projectInfo = deriveProjectInfo(urlInput, flags);
-  const env = (flags.env as string | undefined)?.toLowerCase();
+  const projectInfo = deriveProjectInfo(
+    urlInput,
+    flags,
+    loadedConfig?.config,
+    loadedConfig?.configDir ?? process.cwd()
+  );
+  const env = ((flags.env as string | undefined) ?? loadedConfig?.config.env)?.toLowerCase();
   const script = env ? `build:${env}` : "build:dev";
   const force = Boolean(flags.force);
 
@@ -93,7 +116,9 @@ async function handlePack(
 
   const outDir = path.resolve(
     process.cwd(),
-    (flags.out as string) ?? path.join("dist", projectInfo.slug)
+    (flags.out as string) ??
+      loadedConfig?.config.outDir ??
+      path.join("dist", projectInfo.slug)
   );
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "buke-pack-"));
   let succeeded = false;
@@ -105,7 +130,7 @@ async function handlePack(
       projectInfo
     });
 
-    await runBunInstall(tempDir);
+    await runBunInstall(tempDir, { production: true });
     await runBunScript(tempDir, script);
 
     const buildDir = path.join(tempDir, "build");

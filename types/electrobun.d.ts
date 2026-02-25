@@ -72,6 +72,12 @@ declare module "electrobun" {
   export type ElectrobunConfig = {
     app?: { name?: string; identifier?: string; version?: string };
     build?: Record<string, unknown>;
+    scripts?: {
+      preBuild?: string;
+      postBuild?: string;
+      postWrap?: string;
+      postPackage?: string;
+    };
     runtime?: Record<string, unknown>;
   };
 }
