@@ -15,6 +15,8 @@ export type WindowConfig = {
   minWidth: number;
   minHeight: number;
   hideTitleBar: boolean;
+  fullscreen: boolean;
+  maximized: boolean;
 };
 
 export type TrayConfig = {
@@ -132,7 +134,7 @@ export function deriveSafeArea(flags: Flags, config?: PackConfigFile): SafeAreaC
 
 export function deriveWindow(flags: Flags, config?: PackConfigFile): WindowConfig {
   const width = parseNumberFlag(flags.width, toNumber(config?.window?.width, 1200));
-  const height = parseNumberFlag(flags.height, toNumber(config?.window?.height, 800));
+  const height = parseNumberFlag(flags.height, toNumber(config?.window?.height, 780));
   const minWidth = parseNumberFlag(flags["min-width"], toNumber(config?.window?.minWidth, 960));
   const minHeight = parseNumberFlag(flags["min-height"], toNumber(config?.window?.minHeight, 640));
   const hideTitleBar = flags["show-title-bar"]
@@ -141,9 +143,17 @@ export function deriveWindow(flags: Flags, config?: PackConfigFile): WindowConfi
       ? Boolean(flags["hide-title-bar"])
       : typeof config?.window?.hideTitleBar === "boolean"
         ? config.window.hideTitleBar
-        : true;
+        : false;
+  const fullscreen =
+    flags.fullscreen !== undefined
+      ? Boolean(flags.fullscreen)
+      : Boolean(config?.window?.fullscreen);
+  const maximized =
+    flags.maximized !== undefined
+      ? Boolean(flags.maximized)
+      : Boolean(config?.window?.maximized);
 
-  return { width, height, minWidth, minHeight, hideTitleBar };
+  return { width, height, minWidth, minHeight, hideTitleBar, fullscreen, maximized };
 }
 
 export function deriveTray(
@@ -162,7 +172,9 @@ export function deriveTray(
   const hideOnClose =
     flags["hide-on-close"] !== undefined
       ? Boolean(flags["hide-on-close"])
-      : Boolean(config?.tray?.hideOnClose);
+      : typeof config?.tray?.hideOnClose === "boolean"
+        ? config.tray.hideOnClose
+        : process.platform === "darwin";
 
   return { enabled, icon: resolveAssetPath(iconInput, configDir), hideOnClose };
 }

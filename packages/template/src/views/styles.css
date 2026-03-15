@@ -32,5 +32,8 @@ body {
   left: var(--buke-safe-left);
   right: var(--buke-safe-right);
   bottom: var(--buke-safe-bottom);
+  width: auto;
+  height: auto;
+  display: block;
   border: none;
 }

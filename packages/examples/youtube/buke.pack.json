@@ -1,13 +1,4 @@
 {
   "name": "YouTube",
-  "id": "com.buke.youtube",
-  "url": "https://www.youtube.com",
-  "partition": "persist:youtube",
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 12,
-    "left": 0,
-    "right": 0,
-    "bottom": 0
-  }
+  "url": "https://www.youtube.com"
 }

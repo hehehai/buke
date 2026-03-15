@@ -1,13 +1,4 @@
 {
   "name": "Twitter",
-  "id": "com.buke.twitter",
-  "url": "https://x.com",
-  "partition": "persist:twitter",
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 12,
-    "left": 0,
-    "right": 0,
-    "bottom": 0
-  }
+  "url": "https://x.com"
 }

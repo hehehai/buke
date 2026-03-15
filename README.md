@@ -15,8 +15,9 @@ bun run dev
 
 ## Version sync
 
-- Electrobun dependency follows npm `latest` (currently `1.14.4` as of **2026-02-25**).
-- If you need to lock a specific Electrobun version, change `packages/template/package.json`.
+- Electrobun is pinned in `packages/template/package.json` for reproducible pack builds.
+- Current pinned Electrobun version: `1.15.1`.
+- To upgrade Electrobun, update the pinned template dependency and refresh the builder cache.
 
 ## Repo layout
 
@@ -34,6 +35,7 @@ buke init <url> [--name <AppName>] [--out <dir>] [--id <bundleId>] [--partition 
 buke pack <url> [--name <AppName>] [--out <dir>] [--id <bundleId>] [--env dev|canary|stable] [--force]
 buke dev [--cwd <dir>]
 buke build [--cwd <dir>] [--env dev|canary|stable]
+buke doctor
 ```
 
 ## Docs
@@ -42,19 +44,27 @@ buke build [--cwd <dir>] [--env dev|canary|stable]
 - `docs/guide.zh.md` – 中文配置指南。
 - `docs/buke.schema.json` – JSON schema for pack configs.
 - `packages/examples` – Ready-to-use `buke.pack.json` samples.
+- Examples now follow a minimal Pake-style config shape by default.
 
 ## Notes
 
 - Template is optimized for lightweight builds via system WebView.
 - `buke.config.json` supports window sizing, tray options, safe-area padding, injection, allowlist, zoom, and partition.
 - `buke pack` builds in a temp directory and outputs to `./dist/<slug>` by default (`--force` overwrites).
+- `buke pack` reuses a cached hydrated builder workspace in `~/.cache/buke` and only installs dependencies on a cache miss.
+- First successful build on a new Electrobun version may still download Electrobun core binaries once; later builds reuse that cache.
 - macOS: safe-area padding keeps content away from traffic lights.
 - Electrobun APIs are evolving; keep template in sync with upstream docs.
 
 ### Common flags
 
 - `--icon <path|url>`: app icon (mac iconset/PNG, win ICO, linux PNG).
-- `--width/--height`: initial window size (defaults 1200x800).
+- `--refresh-builder`: rebuild the cached builder workspace before packaging.
+- `--offline`: require a warm builder cache and fail on cache miss.
+- `--fullscreen`: launch the app in fullscreen.
+- `--maximized`: launch the app maximized.
+- `--hide-title-bar`: hide the window title bar.
+- `--width/--height`: initial window size (defaults 1200x780).
 - `--min-width/--min-height`: minimum window size (defaults 960x640).
 - `--show-title-bar`: show macOS title bar (default hides).
 - `--show-system-tray`: enable tray icon + menu.

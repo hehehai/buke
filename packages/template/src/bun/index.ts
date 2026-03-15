@@ -42,7 +42,7 @@ const proxyUrl = networkConfig.proxyUrl?.trim() ?? "";
 
 const WINDOW_PRESETS = {
   compact: { width: 960, height: 640 },
-  standard: { width: 1200, height: 800 },
+  standard: { width: 1200, height: 780 },
   wide: { width: 1500, height: 900 },
 } as const;
 
@@ -255,11 +255,6 @@ const enforceMinSize = (win: BrowserWindow) => {
 function createMainWindow() {
   const initialWidth = Math.max(windowConfig.width, windowConfig.minWidth);
   const initialHeight = Math.max(windowConfig.height, windowConfig.minHeight);
-  const titleBarStyle = isMacOS
-    ? windowConfig.hideTitleBar
-      ? "hidden"
-      : "default"
-    : "default";
 
   const win = new BrowserWindow({
     title: APP_NAME,
@@ -270,9 +265,9 @@ function createMainWindow() {
       width: initialWidth,
       height: initialHeight,
     },
-    ...(isMacOS
+    ...(isMacOS && windowConfig.hideTitleBar
       ? {
-          titleBarStyle,
+          titleBarStyle: "hidden",
           transparent: true,
         }
       : {}),
@@ -280,6 +275,11 @@ function createMainWindow() {
 
   mainWindow = win;
   contentWebview = null;
+
+  const controllableWindow = win as BrowserWindow & {
+    maximize(): void;
+    setFullScreen(fullScreen: boolean): void;
+  };
 
   win.on("close", () => {
     console.log("Window close requested");
@@ -301,6 +301,13 @@ function createMainWindow() {
   win.on("resize", () => {
     enforceMinSize(win);
   });
+
+  if (windowConfig.maximized) {
+    controllableWindow.maximize();
+  }
+  if (windowConfig.fullscreen) {
+    controllableWindow.setFullScreen(true);
+  }
 
   ensureContentWebview();
 

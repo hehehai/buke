@@ -16,6 +16,8 @@ export type BukeConfig = {
     minWidth?: number;
     minHeight?: number;
     hideTitleBar?: boolean;
+    fullscreen?: boolean;
+    maximized?: boolean;
   };
   tray?: {
     enabled?: boolean;
@@ -61,15 +63,17 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
   inject: { css: [], js: [] },
   window: {
     width: 1200,
-    height: 800,
+    height: 780,
     minWidth: 960,
     minHeight: 640,
-    hideTitleBar: true
+    hideTitleBar: false,
+    fullscreen: false,
+    maximized: false
   },
   tray: {
     enabled: false,
     icon: "",
-    hideOnClose: false
+    hideOnClose: process.platform === "darwin"
   },
   network: {
     userAgent: "",

@@ -1,37 +1,7 @@
 {
   "name": "__APP_NAME__",
-  "id": "__APP_ID__",
   "url": "__APP_URL__",
   "createdAt": "__CREATED_AT__",
-  "templateVersion": "0.1.0",
-  "partition": "__APP_PARTITION__",
-  "zoom": 1,
-  "allowlist": [],
-  "window": {
-    "width": "__WINDOW_WIDTH__",
-    "height": "__WINDOW_HEIGHT__",
-    "minWidth": "__WINDOW_MIN_WIDTH__",
-    "minHeight": "__WINDOW_MIN_HEIGHT__",
-    "hideTitleBar": "__HIDE_TITLE_BAR__"
-  },
-  "tray": {
-    "enabled": "__TRAY_ENABLED__",
-    "icon": "__TRAY_ICON__",
-    "hideOnClose": "__HIDE_ON_CLOSE__"
-  },
-  "network": {
-    "userAgent": "__USER_AGENT__",
-    "proxyUrl": "__PROXY_URL__"
-  },
-  "macosSafeArea": {
-    "enabled": "__SAFE_AREA_ENABLED__",
-    "top": "__SAFE_AREA_TOP__",
-    "left": "__SAFE_AREA_LEFT__",
-    "right": "__SAFE_AREA_RIGHT__",
-    "bottom": "__SAFE_AREA_BOTTOM__"
-  },
-  "inject": {
-    "css": [],
-    "js": []
-  }
+  "id": "__APP_ID__",
+  "templateVersion": "0.1.0"
 }

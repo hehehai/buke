@@ -5,6 +5,8 @@ import { TEXT_EXTENSIONS } from "./constants";
 import type { ProjectInfo } from "./config";
 import { prepareIconAssets } from "./icons";
 
+const IGNORED_TEMPLATE_ENTRIES = new Set([".git", "build", "dist", "node_modules"]);
+
 export async function ensureEmptyDir(dir: string) {
   if (!existsSync(dir)) {
     await mkdir(dir, { recursive: true });
@@ -47,9 +49,16 @@ export async function scaffoldProject({
   projectInfo: ProjectInfo;
 }) {
   await ensureEmptyDir(outDir);
-  await cp(templateDir, outDir, { recursive: true });
+  await cp(templateDir, outDir, {
+    recursive: true,
+    filter: (source) => !IGNORED_TEMPLATE_ENTRIES.has(path.basename(source))
+  });
+  await applyProjectInfo(outDir, projectInfo);
+  await writeRuntimeConfig(outDir, projectInfo);
+}
 
-  const iconAssets = await prepareIconAssets(outDir, projectInfo);
+export async function applyProjectInfo(rootDir: string, projectInfo: ProjectInfo) {
+  const iconAssets = await prepareIconAssets(rootDir, projectInfo);
   const trayIcon = projectInfo.tray.icon ?? iconAssets.tray ?? iconAssets.linux;
 
   const replacements = new Map<string, string>([
@@ -72,6 +81,8 @@ export async function scaffoldProject({
     ["\"__WINDOW_MIN_WIDTH__\"", String(projectInfo.window.minWidth)],
     ["\"__WINDOW_MIN_HEIGHT__\"", String(projectInfo.window.minHeight)],
     ["\"__HIDE_TITLE_BAR__\"", projectInfo.window.hideTitleBar ? "true" : "false"],
+    ["\"__WINDOW_FULLSCREEN__\"", projectInfo.window.fullscreen ? "true" : "false"],
+    ["\"__WINDOW_MAXIMIZED__\"", projectInfo.window.maximized ? "true" : "false"],
     ["\"__TRAY_ENABLED__\"", projectInfo.tray.enabled ? "true" : "false"],
     ["\"__TRAY_ICON__\"", JSON.stringify(trayIcon ?? "")],
     ["\"__HIDE_ON_CLOSE__\"", projectInfo.tray.hideOnClose ? "true" : "false"],
@@ -83,7 +94,87 @@ export async function scaffoldProject({
     ["__CREATED_AT__", new Date().toISOString()]
   ]);
 
-  await replacePlaceholders(outDir, replacements);
+  await replacePlaceholders(rootDir, replacements);
+}
+
+async function writeRuntimeConfig(rootDir: string, projectInfo: ProjectInfo) {
+  const runtimeConfig: Record<string, unknown> = {
+    name: projectInfo.appName,
+    url: projectInfo.normalizedUrl,
+    id: projectInfo.appId,
+    templateVersion: "0.1.0"
+  };
+
+  if (projectInfo.partition !== "persist:default") {
+    runtimeConfig.partition = projectInfo.partition;
+  }
+
+  const windowConfig: Record<string, unknown> = {};
+  if (projectInfo.window.width !== 1200) {
+    windowConfig.width = projectInfo.window.width;
+  }
+  if (projectInfo.window.height !== 780) {
+    windowConfig.height = projectInfo.window.height;
+  }
+  if (projectInfo.window.minWidth !== 960) {
+    windowConfig.minWidth = projectInfo.window.minWidth;
+  }
+  if (projectInfo.window.minHeight !== 640) {
+    windowConfig.minHeight = projectInfo.window.minHeight;
+  }
+  if (projectInfo.window.hideTitleBar !== false) {
+    windowConfig.hideTitleBar = projectInfo.window.hideTitleBar;
+  }
+  if (projectInfo.window.fullscreen) {
+    windowConfig.fullscreen = true;
+  }
+  if (projectInfo.window.maximized) {
+    windowConfig.maximized = true;
+  }
+  if (Object.keys(windowConfig).length > 0) {
+    runtimeConfig.window = windowConfig;
+  }
+
+  const trayConfig: Record<string, unknown> = {};
+  if (projectInfo.tray.enabled) {
+    trayConfig.enabled = true;
+  }
+  if (projectInfo.tray.icon) {
+    trayConfig.icon = projectInfo.tray.icon;
+  }
+  if (projectInfo.tray.hideOnClose !== (process.platform === "darwin")) {
+    trayConfig.hideOnClose = projectInfo.tray.hideOnClose;
+  }
+  if (Object.keys(trayConfig).length > 0) {
+    runtimeConfig.tray = trayConfig;
+  }
+
+  const networkConfig: Record<string, unknown> = {};
+  if (projectInfo.network.userAgent) {
+    networkConfig.userAgent = projectInfo.network.userAgent;
+  }
+  if (projectInfo.network.proxyUrl) {
+    networkConfig.proxyUrl = projectInfo.network.proxyUrl;
+  }
+  if (Object.keys(networkConfig).length > 0) {
+    runtimeConfig.network = networkConfig;
+  }
+
+  if (projectInfo.safeArea.enabled) {
+    runtimeConfig.macosSafeArea = {
+      enabled: true,
+      top: projectInfo.safeArea.top,
+      left: projectInfo.safeArea.left,
+      right: projectInfo.safeArea.right,
+      bottom: projectInfo.safeArea.bottom
+    };
+  }
+
+  await writeFile(
+    path.join(rootDir, "buke.config.json"),
+    `${JSON.stringify(runtimeConfig, null, 2)}\n`,
+    "utf8"
+  );
 }
 
 async function replacePlaceholders(root: string, replacements: Map<string, string>) {

@@ -1,12 +1,13 @@
 {
   "name": "Kimi",
-  "id": "com.buke.kimi",
   "url": "https://www.kimi.com",
-  "partition": "persist:kimi",
+  "window": {
+    "hideTitleBar": true
+  },
   "macosSafeArea": {
     "enabled": true,
-    "top": 12,
-    "left": 0,
+    "top": 28,
+    "left": 12,
     "right": 0,
     "bottom": 0
   }

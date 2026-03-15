@@ -12,7 +12,7 @@ buke pack https://www.kimi.com --name Kimi --force
 buke pack --config ./buke.pack.json
 ```
 
-> Electrobun 版本：跟随 npm `latest`（**2026-02-25** 时为 `1.14.4`）。
+> Electrobun 版本固定在模板中，当前为 `1.15.1`。
 
 ## 配置文件结构
 
@@ -21,35 +21,7 @@ buke pack --config ./buke.pack.json
 ```json
 {
   "name": "Kimi",
-  "id": "com.buke.kimi",
-  "url": "https://www.kimi.com",
-  "partition": "persist:kimi",
-  "icon": "./assets/icon.png",
-  "outDir": "dist/kimi",
-  "env": "dev",
-  "window": {
-    "width": 1200,
-    "height": 800,
-    "minWidth": 960,
-    "minHeight": 640,
-    "hideTitleBar": true
-  },
-  "tray": {
-    "enabled": false,
-    "icon": "./assets/tray.png",
-    "hideOnClose": false
-  },
-  "network": {
-    "userAgent": "",
-    "proxyUrl": ""
-  },
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 12,
-    "left": 0,
-    "right": 0,
-    "bottom": 0
-  }
+  "url": "https://www.kimi.com"
 }
 ```
 
@@ -60,22 +32,24 @@ buke pack --config ./buke.pack.json
 - `name`：应用显示名称（默认取 URL host）。
 - `id`：Bundle ID（默认 `com.buke.<slug>`）。
 - `url`：网页地址（必填）。
-- `partition`：Webview session partition（默认 `persist:default`）。
+- `partition`：Webview session partition（默认 `persist:default`），大多数情况下不需要显式配置。
 - `icon`：应用图标路径或 URL。
 - `outDir`：打包输出目录（默认 `dist/<slug>`）。
 - `env`：构建环境，`dev | canary | stable`。
 
 ### window
 
-- `width` / `height`：初始窗口大小。
+- `width` / `height`：初始窗口大小，默认 `1200 x 780`。
 - `minWidth` / `minHeight`：最小窗口大小。
-- `hideTitleBar`：macOS 是否隐藏标题栏（默认 true，使用无 inset 的 hidden 样式）。
+- `hideTitleBar`：是否隐藏 macOS 标题栏，默认 `false`。
+- `fullscreen`：是否全屏启动，默认 `false`。
+- `maximized`：是否最大化启动，默认 `false`。
 
 ### tray
 
 - `enabled`：开启系统托盘。
 - `icon`：托盘图标路径或 URL。
-- `hideOnClose`：关闭按钮改为最小化到托盘。
+- `hideOnClose`：关闭按钮改为最小化到托盘。默认按平台处理：macOS 为 `true`，Windows/Linux 为 `false`。
 
 ### network
 
@@ -84,15 +58,15 @@ buke pack --config ./buke.pack.json
 
 ### macosSafeArea
 
-- `enabled`：开启 safe-area padding。
-- `top/left/right/bottom`：padding 数值（px）。只设置 `top` 可避免顶部内容被覆盖。
+- `enabled`：开启 safe-area padding，默认 `false`。
+- `top/left/right/bottom`：开启后生效的 padding 数值（px）。
 
 ## 体积优化建议
 
 - 使用 `--env stable` 或配置文件中的 `env: "stable"` 进行正式打包。
 - 模板内置 `build.bun.minify` 以及 `postPackage` 清理脚本，自动移除 `.map/.dSYM` 等调试文件。
 - 模板默认开启 `build.useAsar`（如遇到原生模块问题可手动关闭）。
-- 打包时默认使用 `bun install --production`，仅安装生产依赖以减少安装体积。
+- 打包会复用 builder cache。首次切换模板或 Electrobun 版本时，仍可能做一次依赖预热并下载 Electrobun core binaries。
 
 ## 多平台构建
 
@@ -115,4 +89,4 @@ buke pack --config ./buke.pack.json --safe-top 12
 
 ## 示例配置
 
-参考 `packages/examples` 目录（Kimi、WeRead、Twitter、DeepSeek、YouTube、YouTube Music、Excalidraw、XiaoHongShu）。
+参考 `packages/examples` 目录中的极简 Pake 风格示例。

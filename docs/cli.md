@@ -2,7 +2,7 @@
 
 Buke CLI 用于把任意网页打包成 Electrobun 原生应用（Pake-like 体验），适合快速生成轻量桌面壳。
 
-> Electrobun 版本：跟随 npm `latest`（**2026-02-25** 时为 `1.14.4`）。
+> Electrobun 版本固定在模板中，当前为 `1.15.1`。
 
 ## 系统要求
 
@@ -73,6 +73,9 @@ buke pack https://example.com --name Example --force
 - `--out <dir>`：输出目录（默认是 slug）
 - `--id <bundleId>`：Bundle ID
 - `--partition <name>`：Webview session partition
+- `--fullscreen`：全屏启动
+- `--maximized`：最大化启动
+- `--hide-title-bar`：隐藏标题栏
 - `--safe-top/left/right/bottom`：macOS safe-area padding
 - `--safe-off`：关闭 safe-area padding
 
@@ -87,7 +90,7 @@ buke pack https://example.com --name Example --force
 - `--env dev|canary|stable`：Electrobun 构建环境
 - `--force`：覆盖已有输出目录
 
-> 打包时默认使用 `bun install --production`，仅安装生产依赖以减小体积。
+> 打包会优先复用 builder cache。首次切换模板或 Electrobun 版本时，仍可能做一次依赖预热和 Electrobun core binaries 下载。
 
 使用配置文件：
 
@@ -118,7 +121,10 @@ buke pack --config ./buke.pack.json
 -H, --height         Initial window height
 --min-width          Minimum window width
 --min-height         Minimum window height
---show-title-bar     macOS show title bar (默认隐藏)
+--show-title-bar     Show window title bar
+--hide-title-bar     Hide window title bar
+--fullscreen         Launch app in fullscreen
+--maximized          Launch app maximized
 -I, --icon           App icon path or URL
 --show-system-tray   Enable system tray
 --system-tray-icon   Tray icon path or URL
@@ -140,17 +146,17 @@ buke pack --config ./buke.pack.json
 ## 使用示例
 
 ```bash
-# 打包 Kimi，并设置 safe-area
-buke pack https://www.kimi.com --name Kimi --safe-top 12 --force
+# 打包 Kimi（极简默认配置）
+buke pack https://www.kimi.com --name Kimi --force
 
 # 指定窗口尺寸与最小尺寸
-buke pack https://x.com --name X --width 1200 --height 800 --min-width 960 --min-height 640
+buke pack https://x.com --name X --width 1200 --height 780 --min-width 960 --min-height 640
 
-# 托盘与关闭最小化
-buke pack https://example.com --name Example --show-system-tray --hide-on-close
+# 最大化启动
+buke pack https://example.com --name Example --maximized
 
-# 显示系统标题栏
-buke pack https://example.com --name Example --show-title-bar
+# 隐藏标题栏
+buke pack https://example.com --name Example --hide-title-bar
 ```
 
 ## 配置文件说明
@@ -159,42 +165,17 @@ buke pack https://example.com --name Example --show-title-bar
 
 ```json
 {
+  "name": "Example",
   "url": "https://example.com",
-  "partition": "persist:default",
-  "window": {
-    "width": 1200,
-    "height": 800,
-    "minWidth": 960,
-    "minHeight": 640,
-    "hideTitleBar": true
-  },
-  "tray": {
-    "enabled": false,
-    "icon": "",
-    "hideOnClose": false
-  },
-  "network": {
-    "userAgent": "",
-    "proxyUrl": ""
-  },
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 28,
-    "left": 12,
-    "right": 0,
-    "bottom": 0
-  },
-  "inject": {
-    "css": ["inject/custom.css"],
-    "js": ["inject/custom.js"]
-  }
+  "id": "com.buke.example",
+  "templateVersion": "0.1.0"
 }
 ```
 
 ## 说明与注意事项
 
-- **默认隐藏标题栏**，只保留左上角红绿灯。
-- **拖拽区域** 在窗口顶部；如网站 UI 被遮挡，可通过 `--safe-top` 增大拖拽区与安全边距。
+- **默认显示标题栏**；如需更贴近 Pake，可用 `--hide-title-bar`。
+- **safe-area 默认关闭**；仅在网站顶部 UI 被交通灯遮挡时再显式配置。
 - **User-Agent** 仅做 JS 层覆盖（`navigator.userAgent`），网络层 UA 由 WebView 控制。
 - **Proxy** 暂不支持 per-app 代理，`--proxy-url` 仅存储配置（请用系统代理）。
 - **App 体积**：macOS 包内包含 Bun 运行时（约 58MB），体积主要由 Bun 决定。

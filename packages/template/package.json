@@ -10,10 +10,10 @@
     "build:stable": "electrobun build --env=stable"
   },
   "dependencies": {
-    "electrobun": "latest"
+    "electrobun": "1.15.1"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "1.3.9",
     "typescript": "^5.0.0"
   }
 }

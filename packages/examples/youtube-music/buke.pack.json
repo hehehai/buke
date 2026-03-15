@@ -1,13 +1,4 @@
 {
   "name": "YouTube Music",
-  "id": "com.buke.youtube-music",
-  "url": "https://music.youtube.com",
-  "partition": "persist:youtube-music",
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 12,
-    "left": 0,
-    "right": 0,
-    "bottom": 0
-  }
+  "url": "https://music.youtube.com"
 }

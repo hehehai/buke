@@ -42,7 +42,9 @@
         "height": { "type": "number" },
         "minWidth": { "type": "number" },
         "minHeight": { "type": "number" },
-        "hideTitleBar": { "type": "boolean" }
+        "hideTitleBar": { "type": "boolean" },
+        "fullscreen": { "type": "boolean" },
+        "maximized": { "type": "boolean" }
       },
       "description": "Window size and title bar options."
     },

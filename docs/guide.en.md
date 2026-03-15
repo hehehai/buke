@@ -12,7 +12,7 @@ buke pack https://www.kimi.com --name Kimi --force
 buke pack --config ./buke.pack.json
 ```
 
-> Electrobun version follows npm `latest` (as of **2026-02-25**, it is `1.14.4`).
+> Electrobun is pinned in the template. Current version: `1.15.1`.
 
 ## Config File Structure
 
@@ -21,35 +21,7 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 ```json
 {
   "name": "Kimi",
-  "id": "com.buke.kimi",
-  "url": "https://www.kimi.com",
-  "partition": "persist:kimi",
-  "icon": "./assets/icon.png",
-  "outDir": "dist/kimi",
-  "env": "dev",
-  "window": {
-    "width": 1200,
-    "height": 800,
-    "minWidth": 960,
-    "minHeight": 640,
-    "hideTitleBar": true
-  },
-  "tray": {
-    "enabled": false,
-    "icon": "./assets/tray.png",
-    "hideOnClose": false
-  },
-  "network": {
-    "userAgent": "",
-    "proxyUrl": ""
-  },
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 12,
-    "left": 0,
-    "right": 0,
-    "bottom": 0
-  }
+  "url": "https://www.kimi.com"
 }
 ```
 
@@ -60,22 +32,24 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 - `name`: App display name (defaults to URL host).
 - `id`: Bundle identifier (default `com.buke.<slug>`).
 - `url`: Target website URL (required).
-- `partition`: Webview session partition (default `persist:default`).
+- `partition`: Webview session partition (default `persist:default`). Usually not needed.
 - `icon`: App icon path or URL.
 - `outDir`: Pack output directory (default `dist/<slug>`).
 - `env`: Build environment `dev | canary | stable`.
 
 ### window
 
-- `width` / `height`: Initial window size.
+- `width` / `height`: Initial window size. Defaults to `1200 x 780`.
 - `minWidth` / `minHeight`: Minimum size.
-- `hideTitleBar`: Hide title bar on macOS (default true, uses hidden style with no inset).
+- `hideTitleBar`: Hide the macOS title bar. Default `false`.
+- `fullscreen`: Launch in fullscreen. Default `false`.
+- `maximized`: Launch maximized. Default `false`.
 
 ### tray
 
 - `enabled`: Enable system tray.
 - `icon`: Tray icon path or URL.
-- `hideOnClose`: Close button minimizes to tray.
+- `hideOnClose`: Close button minimizes to tray. Default is platform-aware: `true` on macOS, `false` on Windows/Linux.
 
 ### network
 
@@ -84,15 +58,15 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 
 ### macosSafeArea
 
-- `enabled`: Enable safe-area padding.
-- `top/left/right/bottom`: Padding values in px (set `top` only to avoid header overlap).
+- `enabled`: Enable safe-area padding. Default `false`.
+- `top/left/right/bottom`: Padding values in px when enabled.
 
 ## Size Optimization Tips
 
 - Use `--env stable` (or `env: "stable"` in config) for release builds.
 - The template enables `build.bun.minify` and a `postPackage` cleanup script that removes `.map/.dSYM` debug artifacts.
 - The template enables `build.useAsar` by default (disable it if native modules break).
-- Pack uses `bun install --production` by default to avoid dev dependencies.
+- Pack reuses a cached builder workspace. First build on a new template or Electrobun version may still hydrate dependencies and download Electrobun core binaries once.
 
 ## Multi-platform Builds
 
@@ -116,4 +90,4 @@ The CLI flag takes precedence.
 
 ## Example configs
 
-See `packages/examples` for Kimi, WeRead, Twitter, DeepSeek, YouTube, YouTube Music, Excalidraw, and XiaoHongShu.
+See `packages/examples` for minimal Pake-style configs.

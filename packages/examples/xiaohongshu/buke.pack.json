@@ -1,13 +1,4 @@
 {
   "name": "XiaoHongShu",
-  "id": "com.buke.xiaohongshu",
-  "url": "https://www.xiaohongshu.com",
-  "partition": "persist:xiaohongshu",
-  "macosSafeArea": {
-    "enabled": true,
-    "top": 12,
-    "left": 0,
-    "right": 0,
-    "bottom": 0
-  }
+  "url": "https://www.xiaohongshu.com"
 }

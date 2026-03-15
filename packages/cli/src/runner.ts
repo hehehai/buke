@@ -14,16 +14,19 @@ export async function runBunScript(cwd: string, script: string) {
 
 export async function runBunInstall(
   cwd: string,
-  options: { production?: boolean } = {}
+  options: { production?: boolean; noCache?: boolean } = {}
 ) {
-  const args = ["bun", "install", "--no-cache", "--no-progress"];
+  const args = ["bun", "install", "--no-progress"];
+  if (options.noCache) {
+    args.push("--no-cache");
+  }
   if (options.production) {
     args.push("--production");
   }
 
   const proc = Bun.spawn(args, {
     cwd,
-    stdin: "inherit",
+    stdin: "ignore",
     stdout: "inherit",
     stderr: "inherit"
   });

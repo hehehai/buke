@@ -5,11 +5,19 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { cp, mkdtemp, rm } from "node:fs/promises";
 import { parseArgs, printHelp } from "./args";
+import {
+  listBuilderWorkspaces,
+  listElectrobunCliCaches,
+  readLatestBuilderActivity,
+  removeInvalidElectrobunCliCaches,
+  prepareBuilderWorkspace,
+  resolveCacheDir
+} from "./cache";
 import { deriveProjectInfo } from "./config";
 import { loadPackConfig } from "./config-file";
 import { resolveCwd, resolveTemplateDir } from "./helpers";
-import { runBunInstall, runBunScript } from "./runner";
-import { prepareOutDir, scaffoldProject } from "./scaffold";
+import { runBunScript } from "./runner";
+import { applyProjectInfo, prepareOutDir, scaffoldProject } from "./scaffold";
 import { VERSION } from "./constants";
 
 async function main() {
@@ -38,6 +46,9 @@ async function main() {
       return;
     case "build":
       await handleBuild(flags, positionals);
+      return;
+    case "doctor":
+      await handleDoctor(flags);
       return;
     case "help":
       printHelp();
@@ -108,6 +119,8 @@ async function handlePack(
   const env = ((flags.env as string | undefined) ?? loadedConfig?.config.env)?.toLowerCase();
   const script = env ? `build:${env}` : "build:dev";
   const force = Boolean(flags.force);
+  const refreshBuilder = Boolean(flags["refresh-builder"]);
+  const offline = Boolean(flags.offline);
 
   if (env && !["dev", "canary", "stable"].includes(env)) {
     console.error("Invalid --env. Use dev, canary, or stable.");
@@ -120,17 +133,29 @@ async function handlePack(
       loadedConfig?.config.outDir ??
       path.join("dist", projectInfo.slug)
   );
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), "buke-pack-"));
+  const templateDir = resolveTemplateDir(flags);
+  const builder = await prepareBuilderWorkspace({
+    templateDir,
+    refresh: refreshBuilder,
+    offline
+  });
+
+  console.log(
+    `Builder cache ${builder.status}: ${builder.key}\nBuilder workspace: ${builder.workspaceDir}`
+  );
+  if (builder.status !== "hit") {
+    console.log(
+      "Builder cache warmed. First build on a new Electrobun version may still download core binaries once."
+    );
+  }
+
+  const tempRootDir = await mkdtemp(path.join(os.tmpdir(), "buke-pack-"));
+  const tempDir = path.join(tempRootDir, "app");
   let succeeded = false;
 
   try {
-    await scaffoldProject({
-      outDir: tempDir,
-      templateDir: resolveTemplateDir(flags),
-      projectInfo
-    });
-
-    await runBunInstall(tempDir, { production: true });
+    await cp(builder.workspaceDir, tempDir, { recursive: true });
+    await applyProjectInfo(tempDir, projectInfo);
     await runBunScript(tempDir, script);
 
     const buildDir = path.join(tempDir, "build");
@@ -146,7 +171,7 @@ async function handlePack(
     console.log(`\n✔ App packaged at: ${outDir}\n`);
   } finally {
     if (succeeded) {
-      await rm(tempDir, { recursive: true, force: true });
+      await rm(tempRootDir, { recursive: true, force: true });
     } else {
       console.log(`\nTemporary build directory kept for inspection: ${tempDir}\n`);
     }
@@ -176,6 +201,64 @@ async function handleBuild(
   }
 
   await runBunScript(cwd, script);
+}
+
+async function handleDoctor(flags: Record<string, string | boolean>) {
+  const cacheDir = resolveCacheDir();
+  const fix = Boolean(flags.fix);
+
+  if (fix) {
+    const removedCaches = await removeInvalidElectrobunCliCaches();
+    if (removedCaches.length === 0) {
+      console.log("No invalid Electrobun CLI caches found.");
+    } else {
+      console.log(`Removed invalid Electrobun CLI caches: ${removedCaches.length}`);
+      for (const cliCache of removedCaches) {
+        console.log(`- ${cliCache.key}`);
+      }
+    }
+  }
+
+  const builders = await listBuilderWorkspaces();
+  const electrobunCliCaches = await listElectrobunCliCaches();
+  const latestActivity = await readLatestBuilderActivity();
+
+  console.log(`Buke cache directory: ${cacheDir}`);
+  if (latestActivity) {
+    console.log("Latest builder activity:");
+    console.log(`- ${latestActivity.status} ${latestActivity.key}`);
+    console.log(`  at: ${latestActivity.timestamp}`);
+    console.log(`  workspace: ${latestActivity.workspaceDir}`);
+  }
+  if (builders.length === 0) {
+    console.log("No builder caches found.");
+  } else {
+    console.log(`Builder caches: ${builders.length}`);
+    for (const builder of builders) {
+      console.log(
+        [
+          `- ${builder.key}`,
+          `  created: ${builder.createdAt}`,
+          `  electrobun: ${builder.electrobunVersion ?? "unknown"}`,
+          `  platform: ${builder.platform}/${builder.arch}`,
+          `  template: ${builder.templateDir}`,
+          `  workspace: ${builder.workspaceDir}`
+        ].join("\n")
+      );
+    }
+  }
+
+  if (electrobunCliCaches.length === 0) {
+    console.log("Electrobun CLI caches: 0");
+    console.log("Electrobun CLI will download on first successful build.");
+    return;
+  }
+
+  console.log(`Electrobun CLI caches: ${electrobunCliCaches.length}`);
+  for (const cliCache of electrobunCliCaches) {
+    console.log(`- ${cliCache.key}${cliCache.valid ? "" : " [invalid]"}`);
+    console.log(`  binary: ${cliCache.binaryPath}`);
+  }
 }
 
 await main();
