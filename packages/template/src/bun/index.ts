@@ -8,7 +8,11 @@ import {
   safeParseUrl,
 } from "./config";
 import { ensureSettingsPath, readJson, saveSettings } from "./storage";
-import { buildMenu, handleMenuAction } from "./menu";
+import {
+  buildMenu,
+  handleMenuAction,
+  type AboutMenuConfig,
+} from "./menu";
 import { setupTray } from "./tray";
 import {
   applyUserAgentOverride,
@@ -49,10 +53,6 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
 
-type AboutMenuItem = { label: string; url: string };
-type AboutMenuSeparator = { type: "separator" };
-type AboutMenuConfig = Array<AboutMenuItem | AboutMenuSeparator>;
-
 const buildAboutMenu = (about: BukeConfig["about"], originUrl: string): AboutMenuConfig => {
   if (!about?.enabled && about?.enabled !== undefined) {
     return [];
@@ -60,7 +60,7 @@ const buildAboutMenu = (about: BukeConfig["about"], originUrl: string): AboutMen
 
   const configuredItems = Array.isArray(about?.items) ? about.items : [];
   if (configuredItems.length === 0) {
-    return [{ label: originUrl, url: originUrl }];
+    return [{ type: "link", label: originUrl, url: originUrl }];
   }
 
   const normalized: AboutMenuConfig = [];
@@ -80,11 +80,11 @@ const buildAboutMenu = (about: BukeConfig["about"], originUrl: string): AboutMen
       typeof item?.label === "string" && item.label.trim().length > 0
         ? item.label.trim()
         : url;
-    normalized.push({ label, url });
+    normalized.push({ type: "link", label, url });
   }
 
   if (!normalized.some((item) => item.type !== "separator")) {
-    return [{ label: originUrl, url: originUrl }];
+    return [{ type: "link", label: originUrl, url: originUrl }];
   }
 
   return normalized;

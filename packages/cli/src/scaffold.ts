@@ -222,7 +222,7 @@ const INLINE_PREFIX = "inline:";
 async function resolveInjectionConfig(
   inject: InjectConfig | undefined,
   configDir: string
-): Promise<InjectConfig> {
+): Promise<{ css: string[]; js: string[] }> {
   const [css, js] = await Promise.all([
     resolveInjectEntries(inject?.css, configDir),
     resolveInjectEntries(inject?.js, configDir)
