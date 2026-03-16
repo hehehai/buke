@@ -52,7 +52,7 @@ buke pack --config ./buke.pack.json
   - 普通链接项：`{ "label": "xxx", "url": "https://..." }`
   - 分割线：`{ "separator": true }`
 
-默认未配置 `items` 时会自动添加一个 `Open <url>` 项。
+默认未配置 `items` 时，会自动添加一个显示应用名（如 `Kimi`）的项，点击后在默认浏览器中打开该应用源站链接。
 
 ### window
 

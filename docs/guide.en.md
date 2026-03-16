@@ -52,7 +52,7 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
   - Link item: `{ "label": "xxx", "url": "https://..." }`
   - Separator item: `{ "separator": true }`
 
-If `items` is omitted, a default `Open <url>` entry is added automatically.
+If `items` is omitted, a default entry labeled with the app name (for example `Kimi`) is added automatically, and it opens the app URL in the system default browser.
 
 ### window
 

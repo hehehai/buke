@@ -53,14 +53,18 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
 
-const buildAboutMenu = (about: BukeConfig["about"], originUrl: string): AboutMenuConfig => {
+const buildAboutMenu = (
+  about: BukeConfig["about"],
+  appName: string,
+  originUrl: string
+): AboutMenuConfig => {
   if (!about?.enabled && about?.enabled !== undefined) {
     return [];
   }
 
   const configuredItems = Array.isArray(about?.items) ? about.items : [];
   if (configuredItems.length === 0) {
-    return [{ type: "link", label: originUrl, url: originUrl }];
+    return [{ type: "link", label: appName, url: originUrl }];
   }
 
   const normalized: AboutMenuConfig = [];
@@ -84,7 +88,7 @@ const buildAboutMenu = (about: BukeConfig["about"], originUrl: string): AboutMen
   }
 
   if (!normalized.some((item) => item.type !== "separator")) {
-    return [{ type: "link", label: originUrl, url: originUrl }];
+    return [{ type: "link", label: appName, url: originUrl }];
   }
 
   return normalized;
@@ -395,7 +399,7 @@ function createMainWindow() {
   return win;
 }
 
-const aboutMenu = buildAboutMenu(bukeConfig.about, APP_URL);
+const aboutMenu = buildAboutMenu(bukeConfig.about, APP_NAME, APP_URL);
 buildMenu(APP_NAME, isMacOS, aboutMenu.length > 0, aboutMenu);
 warnProxyUnsupported();
 setupTray(
