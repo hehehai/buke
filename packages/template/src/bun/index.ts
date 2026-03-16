@@ -2,8 +2,8 @@ import Electrobun, { BrowserView, BrowserWindow, Session, Utils } from "electrob
 import {
   DEFAULT_CONFIG,
   type Settings,
+  type BukeConfig,
   loadConfig,
-  loadInjectionAssets,
   normalizePartition,
   safeParseUrl,
 } from "./config";
@@ -11,8 +11,6 @@ import { ensureSettingsPath, readJson, saveSettings } from "./storage";
 import { buildMenu, handleMenuAction } from "./menu";
 import { setupTray } from "./tray";
 import {
-  applySafeArea,
-  applyInjectionAssets,
   applyUserAgentOverride,
   applyZoom,
   buildNavigationRules,
@@ -51,6 +49,47 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
 
+type AboutMenuItem = { label: string; url: string };
+type AboutMenuSeparator = { type: "separator" };
+type AboutMenuConfig = Array<AboutMenuItem | AboutMenuSeparator>;
+
+const buildAboutMenu = (about: BukeConfig["about"], originUrl: string): AboutMenuConfig => {
+  if (!about?.enabled && about?.enabled !== undefined) {
+    return [];
+  }
+
+  const configuredItems = Array.isArray(about?.items) ? about.items : [];
+  if (configuredItems.length === 0) {
+    return [{ label: originUrl, url: originUrl }];
+  }
+
+  const normalized: AboutMenuConfig = [];
+
+  for (const item of configuredItems) {
+    if (item?.separator === true) {
+      normalized.push({ type: "separator" });
+      continue;
+    }
+
+    const url = typeof item?.url === "string" ? item.url.trim() : "";
+    if (!url) {
+      continue;
+    }
+
+    const label =
+      typeof item?.label === "string" && item.label.trim().length > 0
+        ? item.label.trim()
+        : url;
+    normalized.push({ label, url });
+  }
+
+  if (!normalized.some((item) => item.type !== "separator")) {
+    return [{ label: originUrl, url: originUrl }];
+  }
+
+  return normalized;
+};
+
 const settingsPath = await ensureSettingsPath();
 const persistedSettings = await readJson<Settings>(settingsPath);
 let zoomLevel =
@@ -59,11 +98,6 @@ let zoomLevel =
     : typeof bukeConfig.zoom === "number"
       ? bukeConfig.zoom
       : DEFAULT_CONFIG.zoom;
-
-const injectionAssets = await loadInjectionAssets(
-  bukeConfig.inject ?? DEFAULT_CONFIG.inject,
-  configDir,
-);
 
 const session = Session.fromPartition(APP_PARTITION);
 
@@ -115,10 +149,8 @@ const applyNavigationRules = () => {
   }
 
   webview.on("dom-ready", () => {
-    applySafeArea(webview, bukeConfig);
     applyUserAgentOverride(webview, userAgentOverride);
     applyZoom(webview, zoomLevel);
-    applyInjection(webview);
     revealContentWebview();
   });
 };
@@ -129,7 +161,6 @@ const ensureContentWebview = async () => {
     if (webview) {
       applyNavigationRules();
       applyZoom(webview, zoomLevel);
-      applyInjection(webview);
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -151,10 +182,6 @@ const adjustZoom = (direction: "in" | "out" | "reset") => {
   void saveSettings(settingsPath, { zoomLevel });
 };
 
-const applyInjection = (webview: BrowserView) => {
-  applyInjectionAssets(webview, injectionAssets);
-};
-
 const revealContentWebview = () => {
   const win = getMainWindow();
   if (!win) {
@@ -162,12 +189,19 @@ const revealContentWebview = () => {
   }
 
   win.webview.executeJavascript(`(() => {
-    const webview = document.querySelector("electrobun-webview[data-safe-area-pending='true']");
-    if (!(webview instanceof HTMLElement)) {
+    const webview = document.querySelector("electrobun-webview[data-init-pending='true']");
+    if (webview instanceof HTMLElement) {
+      webview.dataset.initPending = "false";
+    }
+
+    const safeAreaWebview = document.querySelector(
+      "electrobun-webview[data-safe-area-pending='true']"
+    );
+    if (!(safeAreaWebview instanceof HTMLElement)) {
       return;
     }
-    webview.dataset.safeAreaPending = "false";
-    webview.style.opacity = "";
+
+    safeAreaWebview.dataset.safeAreaPending = "false";
   })();`);
 };
 
@@ -208,6 +242,28 @@ const toggleDevTools = () => {
   webview.toggleDevTools();
 };
 
+const openInBrowser = (url: string) => {
+  const target = url.trim();
+  if (!target) {
+    return;
+  }
+
+  if (process.platform === "darwin") {
+    Bun.spawn(["open", target], { stdout: "ignore", stderr: "ignore" });
+    return;
+  }
+
+  if (process.platform === "win32") {
+    Bun.spawn(["cmd", "/c", "start", "", target], {
+      stdout: "ignore",
+      stderr: "ignore"
+    });
+    return;
+  }
+
+  Bun.spawn(["xdg-open", target], { stdout: "ignore", stderr: "ignore" });
+};
+
 const applyWindowPreset = (preset: keyof typeof WINDOW_PRESETS) => {
   const win = getMainWindow();
   if (!win) {
@@ -219,6 +275,7 @@ const applyWindowPreset = (preset: keyof typeof WINDOW_PRESETS) => {
 };
 
 const menuHandlers = {
+  openUrl: openInBrowser,
   reload: reloadContent,
   toggleDevTools,
   zoomIn: () => adjustZoom("in"),
@@ -338,7 +395,8 @@ function createMainWindow() {
   return win;
 }
 
-buildMenu(APP_NAME, isMacOS);
+const aboutMenu = buildAboutMenu(bukeConfig.about, APP_URL);
+buildMenu(APP_NAME, isMacOS, aboutMenu.length > 0, aboutMenu);
 warnProxyUnsupported();
 setupTray(
   { enabled: trayConfig.enabled, icon: trayConfig.icon, appName: APP_NAME, configDir },

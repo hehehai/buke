@@ -4,6 +4,10 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Schema declaration."
+    },
     "name": {
       "type": "string",
       "description": "App display name."
@@ -67,6 +71,21 @@
       },
       "description": "Webview network overrides."
     },
+    "inject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "css": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "js": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Custom style/script injection assets for the webview."
+    },
     "macosSafeArea": {
       "type": "object",
       "additionalProperties": false,
@@ -78,6 +97,26 @@
         "bottom": { "type": "number" }
       },
       "description": "macOS safe-area padding."
+    },
+    "about": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "url": { "type": "string" },
+              "separator": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "description": "About menu configuration."
     }
   }
 }

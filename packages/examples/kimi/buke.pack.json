@@ -1,12 +1,17 @@
 {
+  "$schema": "../../../docs/buke.schema.json",
   "name": "Kimi",
   "url": "https://www.kimi.com",
   "icon": "https://statics.moonshot.cn/kimi-web-seo/assets/kimi-logo-CegIMkbU.png",
   "window": {
-    "hideTitleBar": true
+    "hideTitleBar": true,
+    "fullscreen": false
   },
   "macosSafeArea": {
     "enabled": true,
     "top": 12
+  },
+  "inject": {
+    "css": ["./style.css"]
   }
 }

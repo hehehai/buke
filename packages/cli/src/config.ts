@@ -30,6 +30,22 @@ export type NetworkConfig = {
   proxyUrl?: string;
 };
 
+export type AboutMenuItemConfig = {
+  label?: string;
+  url?: string;
+  separator?: boolean;
+};
+
+export type AboutConfig = {
+  enabled?: boolean;
+  items?: AboutMenuItemConfig[];
+};
+
+export type InjectConfig = {
+  css?: string[];
+  js?: string[];
+};
+
 export type PackConfigFile = {
   name?: string;
   id?: string;
@@ -41,7 +57,9 @@ export type PackConfigFile = {
   window?: Partial<WindowConfig>;
   tray?: Partial<TrayConfig>;
   network?: Partial<NetworkConfig>;
+  inject?: InjectConfig;
   macosSafeArea?: Partial<SafeAreaConfig>;
+  about?: AboutConfig;
 };
 
 export type ProjectInfo = {
@@ -54,7 +72,9 @@ export type ProjectInfo = {
   window: WindowConfig;
   tray: TrayConfig;
   network: NetworkConfig;
+  about?: AboutConfig;
   icon?: string;
+  inject?: InjectConfig;
 };
 
 export function deriveProjectInfo(
@@ -82,7 +102,9 @@ export function deriveProjectInfo(
     window: deriveWindow(flags, config),
     tray: deriveTray(flags, config, configDir),
     network: deriveNetwork(flags, config),
-    icon: resolveAssetPath(iconInput, configDir)
+    icon: resolveAssetPath(iconInput, configDir),
+    about: config?.about,
+    inject: config?.inject
   };
 }
 

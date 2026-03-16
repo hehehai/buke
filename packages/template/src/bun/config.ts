@@ -39,6 +39,14 @@ export type BukeConfig = {
     css?: string[];
     js?: string[];
   };
+  about?: {
+    enabled?: boolean;
+    items?: {
+      label?: string;
+      url?: string;
+      separator?: boolean;
+    }[];
+  };
 };
 
 export type InjectionAssets = {
@@ -56,6 +64,7 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
   window: Required<NonNullable<BukeConfig["window"]>>;
   tray: Required<NonNullable<BukeConfig["tray"]>>;
   network: Required<NonNullable<BukeConfig["network"]>>;
+  about: Required<NonNullable<BukeConfig["about"]>>;
 } = {
   partition: "persist:default",
   zoom: 1,
@@ -85,6 +94,10 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
     left: 0,
     right: 0,
     bottom: 0
+  },
+  about: {
+    enabled: true,
+    items: []
   }
 };
 
@@ -144,6 +157,13 @@ export function normalizeConfig(config: BukeConfig): BukeConfig {
     inject: {
       ...DEFAULT_CONFIG.inject,
       ...(config.inject ?? {})
+    },
+    about: {
+      ...DEFAULT_CONFIG.about,
+      ...(config.about ?? {}),
+      items: Array.isArray(config.about?.items)
+        ? config.about.items
+        : DEFAULT_CONFIG.about.items
     }
   };
 }

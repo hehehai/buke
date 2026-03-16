@@ -27,10 +27,11 @@ async function main() {
   const configInput = getConfigInput(process.argv.slice(2));
   const configState = await loadProject(configInput);
   let currentProjectInfo = configState.projectInfo;
+  let currentConfigDir = configState.configDir;
 
   await resetWorkspace();
   await linkWorkspaceSources();
-  await renderWorkspace(currentProjectInfo);
+  await renderWorkspace(currentProjectInfo, currentConfigDir);
 
   console.log(`Template dev workspace: ${WORKSPACE_DIR}`);
   console.log(`Using config: ${configState.loaded.configPath}`);
@@ -88,7 +89,8 @@ async function main() {
     try {
       const nextState = await loadProject(configState.loaded.configPath);
       currentProjectInfo = nextState.projectInfo;
-      await renderWorkspace(currentProjectInfo);
+      currentConfigDir = nextState.configDir;
+      await renderWorkspace(currentProjectInfo, currentConfigDir);
       restartDevProcess("config or template files changed");
     } catch (error) {
       console.error("Failed to refresh template dev workspace");
@@ -137,7 +139,7 @@ async function loadProject(configInput: string) {
   const noFlags = {} as Parameters<typeof deriveProjectInfo>[1];
   const projectInfo = deriveProjectInfo(url, noFlags, loaded.config, loaded.configDir);
 
-  return { loaded, projectInfo };
+  return { loaded, projectInfo, configDir: loaded.configDir };
 }
 
 async function resetWorkspace() {
@@ -156,14 +158,14 @@ async function linkWorkspaceSources() {
   await linkDir(path.join(TEMPLATE_DIR, "scripts"), path.join(WORKSPACE_DIR, "scripts"));
 }
 
-async function renderWorkspace(projectInfo: ProjectInfo) {
+async function renderWorkspace(projectInfo: ProjectInfo, configDir: string) {
   const iconAssets = await prepareIconAssets(WORKSPACE_DIR, projectInfo);
 
   await Promise.all([
     renderPackageJson(projectInfo),
     renderElectrobunConfig(projectInfo, iconAssets),
     renderIndexHtml(projectInfo),
-    syncRuntimeConfig(WORKSPACE_DIR, projectInfo),
+    syncRuntimeConfig(WORKSPACE_DIR, projectInfo, configDir),
   ]);
 }
 
@@ -221,7 +223,14 @@ async function renderIndexHtml(projectInfo: ProjectInfo) {
     .replaceAll("__APP_NAME__", projectInfo.appName)
     .replaceAll("__APP_URL__", projectInfo.normalizedUrl)
     .replaceAll("__APP_PARTITION__", projectInfo.partition)
-    .replaceAll("__SAFE_AREA_PENDING__", supportsSiteSafeArea(projectInfo) ? "true" : "false");
+    .replaceAll(
+      "__SAFE_AREA_PENDING__",
+      supportsSiteSafeArea(projectInfo) ? "true" : "false",
+    )
+    .replaceAll(
+      "__INIT_PENDING__",
+      shouldKeepHidden(projectInfo) ? "true" : "false",
+    );
 
   await writeFile(path.join(WORKSPACE_DIR, "src", "views", "index.html"), output, "utf8");
 }
@@ -237,6 +246,18 @@ function supportsSiteSafeArea(projectInfo: ProjectInfo) {
   } catch {
     return false;
   }
+}
+
+function shouldKeepHidden(projectInfo: ProjectInfo) {
+  return (
+    supportsSiteSafeArea(projectInfo) ||
+    hasInjection(projectInfo.inject?.css) ||
+    hasInjection(projectInfo.inject?.js)
+  );
+}
+
+function hasInjection(entries: unknown) {
+  return Array.isArray(entries) && entries.length > 0;
 }
 
 function watchWorkspaceInputs(configPath: string, onChange: () => void) {
@@ -270,17 +291,9 @@ function watchWorkspaceInputs(configPath: string, onChange: () => void) {
 
 function watchFileParent(filePath: string, onChange: () => void) {
   const directory = path.dirname(filePath);
-  const filename = path.basename(filePath);
 
-  return watch(directory, (_, changedFile) => {
-    if (!changedFile) {
-      onChange();
-      return;
-    }
-
-    if (changedFile === filename) {
-      onChange();
-    }
+  return watch(directory, () => {
+    onChange();
   }) satisfies FSWatcher;
 }
 

@@ -43,6 +43,16 @@ buke pack --config ./buke.pack.json
 - `icon`：应用图标路径或 URL。
 - `outDir`：打包输出目录（默认 `dist/<slug>`）。
 - `env`：构建环境，`dev | canary | stable`。
+- `about`：配置应用菜单里的 About 区域。
+
+### about
+
+- `enabled`：是否显示 About 菜单，默认 `true`。
+- `items`：菜单项数组，支持两类：
+  - 普通链接项：`{ "label": "xxx", "url": "https://..." }`
+  - 分割线：`{ "separator": true }`
+
+默认未配置 `items` 时会自动添加一个 `Open <url>` 项。
 
 ### window
 
@@ -62,6 +72,31 @@ buke pack --config ./buke.pack.json
 
 - `userAgent`：覆盖 User-Agent（JS 侧）。
 - `proxyUrl`：代理 URL（注意：Electrobun 暂不支持应用级代理）。
+
+### inject
+
+- `inject.css`：要注入到页面的 CSS 内容。
+  - 支持 `inline:` 开头的内联字符串
+  - 支持相对/绝对路径，基于配置文件目录解析
+- `inject.js`：要注入到页面的 JS 内容。
+  - 支持 `inline:` 开头的内联字符串
+  - 支持相对/绝对路径，基于配置文件目录解析
+
+示例：
+
+```json
+{
+  "inject": {
+    "css": [
+      "inline:body { background: #111 !important; }",
+      "./assets/extra.css"
+    ],
+    "js": [
+      "./assets/force-dark.js"
+    ]
+  }
+}
+```
 
 ### macosSafeArea
 

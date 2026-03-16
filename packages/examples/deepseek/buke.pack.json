@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../docs/buke.schema.json",
   "name": "DeepSeek",
   "url": "https://chat.deepseek.com"
 }

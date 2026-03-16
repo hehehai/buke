@@ -1,6 +1,7 @@
 import { ApplicationMenu } from "electrobun/bun";
 
 export type MenuHandlers = {
+  openUrl: (url: string) => void;
   reload: () => void;
   toggleDevTools: () => void;
   zoomIn: () => void;
@@ -14,7 +15,26 @@ export type MenuHandlers = {
   quit: () => void;
 };
 
-export function buildMenu(appName: string, isMacOS: boolean) {
+export type AboutMenuItem = {
+  type: "link";
+  label: string;
+  url: string;
+};
+
+export type AboutMenuSeparator = {
+  type: "separator";
+};
+
+export type AboutMenuConfig = Array<AboutMenuItem | AboutMenuSeparator>;
+
+const OPEN_URL_PREFIX = "open-url:";
+
+export function buildMenu(
+  appName: string,
+  isMacOS: boolean,
+  showAboutMenu: boolean,
+  aboutItems: AboutMenuConfig
+) {
   ApplicationMenu.setApplicationMenu([
     {
       label: appName,
@@ -59,11 +79,38 @@ export function buildMenu(appName: string, isMacOS: boolean) {
         { label: "Standard", action: "window-standard" },
         { label: "Wide", action: "window-wide" }
       ]
-    }
+    },
+    ...(showAboutMenu
+      ? [
+          {
+            label: "About",
+            submenu: aboutItems.map((item) => {
+              if (item.type === "separator") {
+                return { type: "separator" as const };
+              }
+
+              return {
+                label: item.label,
+                action: `${OPEN_URL_PREFIX}${encodeURIComponent(item.url)}`,
+              };
+            }),
+          },
+        ]
+      : []),
   ]);
 }
 
 export function handleMenuAction(action: string, handlers: MenuHandlers) {
+  if (action.startsWith(OPEN_URL_PREFIX)) {
+    const raw = action.slice(OPEN_URL_PREFIX.length);
+    try {
+      handlers.openUrl(decodeURIComponent(raw));
+    } catch {
+      handlers.openUrl(raw);
+    }
+    return;
+  }
+
   switch (action) {
     case "reload":
       handlers.reload();

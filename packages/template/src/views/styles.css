@@ -37,3 +37,7 @@ body {
 .webview[data-safe-area-pending="true"] {
   opacity: 0;
 }
+
+.webview[data-init-pending="true"] {
+  opacity: 0;
+}

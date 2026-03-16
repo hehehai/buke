@@ -55,6 +55,8 @@ bun add -g @hehehai/buke
 buke pack https://www.kimi.com --name Kimi --force
 ```
 
+也支持通过 `buke.pack.json` 注入样式/脚本（`inject` 字段），详见配置指南。
+
 或初始化模板项目：
 
 ```bash

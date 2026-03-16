@@ -156,7 +156,7 @@ async function handlePack(
   try {
     await cp(builder.workspaceDir, tempDir, { recursive: true });
     await applyProjectInfo(tempDir, projectInfo);
-    await syncRuntimeConfig(tempDir, projectInfo);
+    await syncRuntimeConfig(tempDir, projectInfo, loadedConfig?.configDir ?? process.cwd());
     await runBunScript(tempDir, script);
 
     const buildDir = path.join(tempDir, "build");

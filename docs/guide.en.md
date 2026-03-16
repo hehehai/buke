@@ -43,6 +43,16 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 - `icon`: App icon path or URL.
 - `outDir`: Pack output directory (default `dist/<slug>`).
 - `env`: Build environment `dev | canary | stable`.
+- `about`: Configure the About menu section.
+
+### about
+
+- `enabled`: Whether to show the About menu (default `true`).
+- `items`: Array of menu items, supports:
+  - Link item: `{ "label": "xxx", "url": "https://..." }`
+  - Separator item: `{ "separator": true }`
+
+If `items` is omitted, a default `Open <url>` entry is added automatically.
 
 ### window
 
@@ -62,6 +72,29 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 
 - `userAgent`: Override User-Agent (JS side).
 - `proxyUrl`: Proxy URL (note: Electrobun does not support per-app proxy yet).
+
+### inject
+
+- `inject.css`: CSS content to inject. Supports:
+  - Inline code by prefixing with `inline:`
+  - Relative/absolute file path, resolved against config file directory
+- `inject.js`: JavaScript content to inject. Same formats as `inject.css`.
+
+Example:
+
+```json
+{
+  "inject": {
+    "css": [
+      "inline:body { background: #111 !important; }",
+      "./assets/extra.css"
+    ],
+    "js": [
+      "./assets/force-dark.js"
+    ]
+  }
+}
+```
 
 ### macosSafeArea
 
