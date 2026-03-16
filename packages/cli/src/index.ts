@@ -21,31 +21,31 @@ import { applyProjectInfo, prepareOutDir, scaffoldProject, syncRuntimeConfig } f
 import { VERSION } from "./constants";
 
 async function main() {
-  const [command, ...rest] = process.argv.slice(2);
-  const { flags, positionals } = parseArgs(rest);
-
-  if (!command || flags.help) {
-    printHelp();
-    return;
-  }
+  const { flags, positionals } = parseArgs(process.argv.slice(2));
+  const [command, ...commandPositionals] = positionals;
 
   if (flags.version) {
     console.log(VERSION);
     return;
   }
 
+  if (!command || flags.help) {
+    printHelp();
+    return;
+  }
+
   switch (command) {
     case "init":
-      await handleInit(flags, positionals);
+      await handleInit(flags, commandPositionals);
       return;
     case "pack":
-      await handlePack(flags, positionals);
+      await handlePack(flags, commandPositionals);
       return;
     case "dev":
-      await handleRun(flags, positionals, "dev");
+      await handleRun(flags, commandPositionals, "dev");
       return;
     case "build":
-      await handleBuild(flags, positionals);
+      await handleBuild(flags, commandPositionals);
       return;
     case "doctor":
       await handleDoctor(flags);
