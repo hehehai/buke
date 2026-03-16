@@ -1,76 +1,88 @@
 # Buke
 
-A lightweight, Electrobun-based “Pake-like” toolchain for wrapping web apps into desktop shells.
+Buke is a Pake-like Electrobun CLI for turning websites into lightweight desktop apps.
+
+## Install
+
+### Homebrew
+
+```bash
+brew install hehehai/tap/buke
+```
+
+### Shell installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh
+```
+
+### npm
+
+```bash
+npm install -g @hehehai/buke
+```
+
+`@hehehai/buke` runs on Bun. If you install it from npm, make sure Bun is already available on your machine. If you want a no-Bun install, use Homebrew, the shell installer, or the GitHub Releases binaries.
+
+### GitHub Releases
+
+Prebuilt CLI binaries are published for:
+
+- macOS arm64
+- macOS x64
+- Linux x64
+- Windows x64
+
+Release downloads: https://github.com/hehehai/buke/releases
 
 ## Quick start
 
 ```bash
-# from repo root
-bun install
-bun run cli -- init https://example.com --name Example
+buke pack https://www.kimi.com --name Kimi --force
+```
+
+Or initialize a template project:
+
+```bash
+buke init https://example.com --name Example
 cd example
 bun install
 bun run dev
 ```
 
-## Version sync
-
-- Electrobun is pinned in `packages/template/package.json` for reproducible pack builds.
-- Current pinned Electrobun version: `1.16.0`.
-- To upgrade Electrobun, update the pinned template dependency and refresh the builder cache.
-
-## Repo layout
-
-- `packages/cli` – Bun-based CLI to scaffold and build apps.
-- `packages/template` – Electrobun app template used by `buke init`.
-- `packages/examples` – Pack config samples for popular sites.
-- `docs/roadmap.md` – Phased feature roadmap and delivery plan.
-
-## CLI
-
-See `docs/cli.md` for full install and usage guide.
+## Development
 
 ```bash
-buke init <url> [--name <AppName>] [--out <dir>] [--id <bundleId>] [--partition <name>]
-buke pack <url> [--name <AppName>] [--out <dir>] [--id <bundleId>] [--env dev|canary|stable] [--force]
-buke dev [--cwd <dir>]
-buke build [--cwd <dir>] [--env dev|canary|stable]
-buke doctor
+bun install
+bun run typecheck
+bun run build:cli
 ```
+
+Template live-preview:
+
+```bash
+bun run dev:template:kimi
+```
+
+## Release
+
+Releases are driven by Git tags:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow publishes:
+
+- GitHub Release assets
+- npm package `@hehehai/buke`
+- Homebrew formula `hehehai/tap/buke`
 
 ## Docs
 
-- `docs/guide.en.md` – English configuration guide.
-- `docs/guide.zh.md` – 中文配置指南。
-- `docs/buke.schema.json` – JSON schema for pack configs.
-- `packages/examples` – Ready-to-use `buke.pack.json` samples.
-- Examples now follow a minimal Pake-style config shape by default.
-
-## Notes
-
-- Template is optimized for lightweight builds via system WebView.
-- `buke.config.json` supports window sizing, tray options, safe-area padding, injection, allowlist, zoom, and partition.
-- `buke pack` builds in a temp directory and outputs to `./dist/<slug>` by default (`--force` overwrites).
-- `buke pack` reuses a cached hydrated builder workspace in `~/.cache/buke` and only installs dependencies on a cache miss.
-- First successful build on a new Electrobun version may still download Electrobun core binaries once; later builds reuse that cache.
-- macOS: safe-area padding keeps content away from traffic lights.
-- Electrobun APIs are evolving; keep template in sync with upstream docs.
-
-### Common flags
-
-- `--icon <path|url>`: app icon (mac iconset/PNG, win ICO, linux PNG).
-- `--refresh-builder`: rebuild the cached builder workspace before packaging.
-- `--offline`: require a warm builder cache and fail on cache miss.
-- `--fullscreen`: launch the app in fullscreen.
-- `--maximized`: launch the app maximized.
-- `--hide-title-bar`: hide the window title bar.
-- `--width/--height`: initial window size (defaults 1200x780).
-- `--min-width/--min-height`: minimum window size (defaults 960x640).
-- `--show-title-bar`: show macOS title bar (default hides).
-- `--show-system-tray`: enable tray icon + menu.
-- `--system-tray-icon`: tray icon path/URL (defaults to app icon).
-- `--hide-on-close`: minimize to tray instead of quitting.
-- `--user-agent`: override JS user agent (best-effort).
-- `--proxy-url`: store proxy URL in config (use system proxy).
-- `--safe-top/left/right/bottom`: macOS safe-area padding.
-- `--safe-off`: disable safe-area padding.
+- [CLI guide](docs/cli.md)
+- [English config guide](docs/guide.en.md)
+- [中文配置指南](docs/guide.zh.md)
+- [JSON schema](docs/buke.schema.json)
+- [Examples](packages/examples)

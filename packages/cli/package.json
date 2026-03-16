@@ -1,10 +1,27 @@
 {
-  "name": "@buke/cli",
+  "name": "@hehehai/buke",
   "version": "0.1.0",
-  "private": true,
+  "description": "Pake-like Electrobun CLI for wrapping websites into lightweight desktop apps",
+  "license": "Apache-2.0",
   "type": "module",
   "bin": {
     "buke": "dist/index.js"
+  },
+  "files": ["dist"],
+  "keywords": ["buke", "electrobun", "pake", "desktop", "cli"],
+  "homepage": "https://github.com/hehehai/buke",
+  "bugs": {
+    "url": "https://github.com/hehehai/buke/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hehehai/buke.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
   },
   "scripts": {
     "dev": "bun src/index.ts",

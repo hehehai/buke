@@ -2,6 +2,13 @@
 
 Buke CLI 用于把网页快速打包成 Electrobun 桌面应用。本文聚焦 **打包配置文件** 与参数说明。
 
+## 安装
+
+- Homebrew：`brew install hehehai/tap/buke`
+- Shell 一键安装：`curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh`
+- npm：`npm install -g @hehehai/buke`（仍需要 Bun 运行时）
+- Releases：https://github.com/hehehai/buke/releases
+
 ## 快速开始
 
 ```bash
@@ -77,6 +84,7 @@ Electrobun 会按 **当前系统平台** 打包：
 - Linux：在 Linux 环境运行 `buke pack`
 
 可在 CI 中分别执行，产物体积可用 `du -sh dist/*`（Linux/macOS）或 `Get-ChildItem dist -Recurse | Measure-Object -Property Length -Sum`（Windows）统计。
+
 ## CLI 参数覆盖规则
 
 如果 CLI 参数与配置文件同时出现，**CLI 参数优先生效**。例如：

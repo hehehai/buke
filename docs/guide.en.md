@@ -2,6 +2,13 @@
 
 Buke CLI wraps any website into a lightweight Electrobun desktop app. This guide focuses on **pack config files** and parameters.
 
+## Install
+
+- Homebrew: `brew install hehehai/tap/buke`
+- Shell installer: `curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh`
+- npm: `npm install -g @hehehai/buke` (Bun runtime still required)
+- Releases: https://github.com/hehehai/buke/releases
+
 ## Quick Start
 
 ```bash

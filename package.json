@@ -5,6 +5,12 @@
   "scripts": {
     "cli": "bun run packages/cli/src/index.ts",
     "build:cli": "bun run --cwd packages/cli build",
+    "build:release:darwin-arm64": "bun run scripts/build-release.ts --target darwin-arm64",
+    "build:release:darwin-x64": "bun run scripts/build-release.ts --target darwin-x64",
+    "build:release:linux-x64": "bun run scripts/build-release.ts --target linux-x64",
+    "build:release:windows-x64": "bun run scripts/build-release.ts --target windows-x64",
+    "release:prepare": "bun run scripts/prepare-release.ts",
+    "release:brew-formula": "bun run scripts/render-brew-formula.ts",
     "dev": "bun run --cwd packages/cli dev",
     "dev:template": "bun run scripts/dev-template.ts",
     "dev:template:kimi": "bun run scripts/dev-template.ts --config packages/examples/kimi/buke.pack.json",

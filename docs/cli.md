@@ -1,53 +1,61 @@
 # Buke CLI
 
-Buke CLI 用于把任意网页打包成 Electrobun 原生应用（Pake-like 体验），适合快速生成轻量桌面壳。
+Buke CLI 用于把任意网页打包成轻量桌面应用，核心运行时基于 Electrobun。
 
-> Electrobun 版本固定在模板中，当前为 `1.16.0`。
+## 安装
 
-## 系统要求
-
-- **Bun**: `>= 1.3`
-- **macOS (推荐)**: 毛玻璃与原生拖拽区域仅在 macOS 生效
-- **Xcode CLI Tools (macOS)**: 用于 `sips` / `iconutil` 生成图标
-
-## 安装方式
-
-### 1) npm（发布后）
+### 1. Homebrew
 
 ```bash
-npm install -g @buke/cli
-# 或
-pnpm add -g @buke/cli
+brew install hehehai/tap/buke
 ```
 
-### 2) Bun（发布后）
+### 2. Shell 一键安装
 
 ```bash
-bun add -g @buke/cli
+curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh
 ```
 
-### 3) Homebrew（发布后）
+也可以指定版本：
 
 ```bash
-brew install buke/tap/buke
+curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh -s -- v0.1.0
 ```
 
-### 4) 源码安装（推荐开发/试用）
+### 3. npm
 
 ```bash
-git clone <your-repo>
-cd Buke
-bun install
-bun run build:cli
-
-# 直接运行
-bun run packages/cli/dist/index.js --help
-
-# 或者用本地脚本快捷调用
-bun run cli -- help
+npm install -g @hehehai/buke
 ```
+
+说明：npm 发布的是 Bun 运行时版本的 CLI，机器上仍需要先安装 Bun。若希望无 Bun 安装，请使用 Homebrew、Shell 安装脚本或 GitHub Release 二进制。
+
+### 4. Bun
+
+```bash
+bun add -g @hehehai/buke
+```
+
+### 5. GitHub Releases
+
+预编译 CLI 二进制会发布到：
+
+- https://github.com/hehehai/buke/releases
+
+当前计划提供：
+
+- macOS arm64
+- macOS x64
+- Linux x64
+- Windows x64
 
 ## 快速开始
+
+```bash
+buke pack https://www.kimi.com --name Kimi --force
+```
+
+或初始化模板项目：
 
 ```bash
 buke init https://example.com --name Example
@@ -56,61 +64,18 @@ bun install
 bun run dev
 ```
 
-一键打包：
+## 命令
 
 ```bash
-buke pack https://example.com --name Example --force
+buke init <url> [--name <AppName>] [--out <dir>] [--id <bundleId>]
+buke pack <url> [--name <AppName>] [--out <dir>] [--id <bundleId>] [--env dev|canary|stable] [--force]
+buke pack --config <file> [--env dev|canary|stable] [--force]
+buke dev [--cwd <dir>]
+buke build [--cwd <dir>] [--env dev|canary|stable]
+buke doctor [--fix]
 ```
 
-## 命令说明
-
-### `buke init <url>`
-
-生成一个 Electrobun 项目模板。
-
-常用参数：
-- `--name <AppName>`：应用名称
-- `--out <dir>`：输出目录（默认是 slug）
-- `--id <bundleId>`：Bundle ID
-- `--partition <name>`：Webview session partition
-- `--fullscreen`：全屏启动
-- `--maximized`：最大化启动
-- `--hide-title-bar`：隐藏标题栏
-- `--safe-top/left/right/bottom`：macOS safe-area padding
-- `--safe-off`：关闭 safe-area padding
-
-### `buke pack <url>`
-
-在临时目录构建应用并输出打包结果（默认 `./dist/<slug>`）。
-
-常用参数：
-- `--name <AppName>`：应用名称
-- `--out <dir>`：输出目录
-- `--id <bundleId>`：Bundle ID
-- `--env dev|canary|stable`：Electrobun 构建环境
-- `--force`：覆盖已有输出目录
-
-> 打包会优先复用 builder cache。首次切换模板或 Electrobun 版本时，仍可能做一次依赖预热和 Electrobun core binaries 下载。
-
-使用配置文件：
-
-```bash
-buke pack --config ./buke.pack.json
-```
-
-配置文件可配合 JSON Schema（`docs/buke.schema.json`）获得类型提示。
-
-示例配置可参考 `packages/examples`。
-
-### `buke dev`
-
-进入项目后启动开发模式（Electrobun dev）。
-
-### `buke build`
-
-在项目中构建应用（Electrobun build）。
-
-## 全部参数（init / pack）
+## 常用参数
 
 ```text
 -n, --name           App display name
@@ -137,54 +102,32 @@ buke pack --config ./buke.pack.json
 --safe-bottom        macOS safe-area bottom padding
 --safe-off           Disable macOS safe-area padding
 --config             Use pack config JSON
+--refresh-builder    Recreate the cached builder workspace before packaging
+--offline            Require a warm builder cache and skip cache hydration
 -t, --template       Template directory override
 -c, --cwd            Run command in target directory
 -e, --env            Build env for release channel
 --force              Overwrite existing output directory
 ```
 
-## 使用示例
+## 开发与发布
+
+本仓库新增了 3 条发布链路：
+
+- GitHub Actions `CI`：类型检查和 CLI smoke test
+- GitHub Actions `Release`：tag 发布 GitHub Release、npm 和 Homebrew
+- GitHub Actions `Sync Homebrew Formula`：单独重推 brew formula
+
+发布入口固定为：
 
 ```bash
-# 打包 Kimi（极简默认配置）
-buke pack https://www.kimi.com --name Kimi --force
-
-# 指定窗口尺寸与最小尺寸
-buke pack https://x.com --name X --width 1200 --height 780 --min-width 960 --min-height 640
-
-# 最大化启动
-buke pack https://example.com --name Example --maximized
-
-# 隐藏标题栏
-buke pack https://example.com --name Example --hide-title-bar
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
-## 配置文件说明
+## 说明
 
-生成项目后会带 `buke.config.json`，常用字段如下：
-
-```json
-{
-  "name": "Example",
-  "url": "https://example.com",
-  "id": "com.buke.example",
-  "templateVersion": "0.1.0"
-}
-```
-
-## 说明与注意事项
-
-- **默认显示标题栏**；如需更贴近 Pake，可用 `--hide-title-bar`。
-- **safe-area 默认关闭**；仅在网站顶部 UI 被交通灯遮挡时再显式配置。
-- **User-Agent** 仅做 JS 层覆盖（`navigator.userAgent`），网络层 UA 由 WebView 控制。
-- **Proxy** 暂不支持 per-app 代理，`--proxy-url` 仅存储配置（请用系统代理）。
-- **App 体积**：macOS 包内包含 Bun 运行时（约 58MB），体积主要由 Bun 决定。
-- **多平台构建**：Electrobun 构建会生成当前系统平台的包；若要生成 Windows / Linux / macOS Intel，请在对应平台或 CI 环境运行 `buke pack`。
-
-## 卸载
-
-```bash
-npm uninstall -g @buke/cli
-# 或
-brew uninstall buke
-```
+- `buke pack` 仍然按当前宿主平台打包应用产物。
+- GitHub Release 里的 CLI 二进制用于安装 `buke` 命令本身，不等同于 `buke pack` 生成的应用产物。
+- `buke pack` 会复用 `~/.cache/buke` 中的 builder cache。
+- 首次切换模板或 Electrobun 版本时，仍可能额外下载一次 Electrobun core binaries。
