@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 
-import path from "node:path";
 import { rm } from "node:fs/promises";
+import path from "node:path";
 import {
   CLI_ENTRY,
+  type ReleaseTarget,
   ensureTargetDir,
   getArchivePath,
   getBinaryPath,
   getCliPackageMetadata,
   getTargetConfig,
   parseFlag,
-  type ReleaseTarget,
 } from "./release-lib";
 
 async function run(args: string[], cwd = process.cwd()) {
@@ -30,7 +30,9 @@ async function run(args: string[], cwd = process.cwd()) {
 async function main() {
   const target = parseFlag(process.argv.slice(2), "--target") as ReleaseTarget | undefined;
   if (!target) {
-    throw new Error("Missing --target. Example: bun run scripts/build-release.ts --target darwin-arm64");
+    throw new Error(
+      "Missing --target. Example: bun run scripts/build-release.ts --target darwin-arm64",
+    );
   }
 
   const metadata = await getCliPackageMetadata();

@@ -16,13 +16,6 @@
     }
   },
   "files": {
-    "ignore": [
-    "node_modules",
-    "dist",
-    "**/build/**",
-    "**/views/**",
-    "**/.tmp/**",
-    "**/inject/**"
-  ]
+    "ignore": ["node_modules", "dist", "**/build/**", "**/views/**", "**/.tmp/**", "**/inject/**"]
   }
 }

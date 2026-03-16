@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import path from "node:path";
 import { mkdir, readFile, rm } from "node:fs/promises";
+import path from "node:path";
 
 export const REPO_ROOT = process.cwd();
 export const CLI_DIR = path.join(REPO_ROOT, "packages", "cli");
@@ -39,9 +39,7 @@ export type ReleaseTarget = keyof typeof TARGET_CONFIG;
 export const RELEASE_TARGETS = Object.keys(TARGET_CONFIG) as ReleaseTarget[];
 
 export async function getCliPackageMetadata() {
-  const packageJson = JSON.parse(
-    await readFile(path.join(CLI_DIR, "package.json"), "utf8")
-  ) as {
+  const packageJson = JSON.parse(await readFile(path.join(CLI_DIR, "package.json"), "utf8")) as {
     name: string;
     version: string;
     description?: string;

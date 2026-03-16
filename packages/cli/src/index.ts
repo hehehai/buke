@@ -1,24 +1,24 @@
 #!/usr/bin/env bun
 
-import os from "node:os";
-import path from "node:path";
 import { existsSync } from "node:fs";
 import { cp, mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { parseArgs, printHelp } from "./args";
 import {
   listBuilderWorkspaces,
   listElectrobunCliCaches,
+  prepareBuilderWorkspace,
   readLatestBuilderActivity,
   removeInvalidElectrobunCliCaches,
-  prepareBuilderWorkspace,
-  resolveCacheDir
+  resolveCacheDir,
 } from "./cache";
 import { deriveProjectInfo } from "./config";
 import { loadPackConfig } from "./config-file";
+import { VERSION } from "./constants";
 import { resolveCwd, resolveTemplateDir } from "./helpers";
 import { runBunScript } from "./runner";
 import { applyProjectInfo, prepareOutDir, scaffoldProject, syncRuntimeConfig } from "./scaffold";
-import { VERSION } from "./constants";
 
 async function main() {
   const { flags, positionals } = parseArgs(process.argv.slice(2));
@@ -60,10 +60,7 @@ async function main() {
   }
 }
 
-async function handleInit(
-  flags: Record<string, string | boolean>,
-  positionals: string[]
-) {
+async function handleInit(flags: Record<string, string | boolean>, positionals: string[]) {
   const urlInput = (flags.url as string) ?? positionals[0];
   if (!urlInput) {
     console.error("Missing URL. Example: buke init https://example.com");
@@ -76,23 +73,20 @@ async function handleInit(
   await scaffoldProject({
     outDir,
     templateDir: resolveTemplateDir(flags),
-    projectInfo
+    projectInfo,
   });
 
   console.log("\n✔ Project created\n");
   console.log(`Next:\n  cd ${path.basename(outDir)}\n  bun install\n  bun run dev\n`);
 }
 
-async function handlePack(
-  flags: Record<string, string | boolean>,
-  positionals: string[]
-) {
+async function handlePack(flags: Record<string, string | boolean>, positionals: string[]) {
   const mutablePositionals = [...positionals];
   const configFlag = typeof flags.config === "string" ? (flags.config as string) : undefined;
   let configPath = configFlag;
   if (!configPath) {
     const candidate = mutablePositionals[0];
-    if (candidate && candidate.toLowerCase().endsWith(".json")) {
+    if (candidate?.toLowerCase().endsWith(".json")) {
       const resolved = path.resolve(process.cwd(), candidate);
       if (existsSync(resolved)) {
         configPath = candidate;
@@ -102,8 +96,7 @@ async function handlePack(
   }
 
   const loadedConfig = configPath ? await loadPackConfig(configPath) : null;
-  const urlInput =
-    (flags.url as string) ?? mutablePositionals[0] ?? loadedConfig?.config.url;
+  const urlInput = (flags.url as string) ?? mutablePositionals[0] ?? loadedConfig?.config.url;
   if (!urlInput) {
     console.error("Missing URL. Example: buke pack https://example.com");
     console.error("Or use: buke pack --config ./buke.pack.json");
@@ -114,7 +107,7 @@ async function handlePack(
     urlInput,
     flags,
     loadedConfig?.config,
-    loadedConfig?.configDir ?? process.cwd()
+    loadedConfig?.configDir ?? process.cwd(),
   );
   const env = ((flags.env as string | undefined) ?? loadedConfig?.config.env)?.toLowerCase();
   const script = env ? `build:${env}` : "build:dev";
@@ -129,23 +122,21 @@ async function handlePack(
 
   const outDir = path.resolve(
     process.cwd(),
-    (flags.out as string) ??
-      loadedConfig?.config.outDir ??
-      path.join("dist", projectInfo.slug)
+    (flags.out as string) ?? loadedConfig?.config.outDir ?? path.join("dist", projectInfo.slug),
   );
   const templateDir = resolveTemplateDir(flags);
   const builder = await prepareBuilderWorkspace({
     templateDir,
     refresh: refreshBuilder,
-    offline
+    offline,
   });
 
   console.log(
-    `Builder cache ${builder.status}: ${builder.key}\nBuilder workspace: ${builder.workspaceDir}`
+    `Builder cache ${builder.status}: ${builder.key}\nBuilder workspace: ${builder.workspaceDir}`,
   );
   if (builder.status !== "hit") {
     console.log(
-      "Builder cache warmed. First build on a new Electrobun version may still download core binaries once."
+      "Builder cache warmed. First build on a new Electrobun version may still download core binaries once.",
     );
   }
 
@@ -182,16 +173,13 @@ async function handlePack(
 async function handleRun(
   flags: Record<string, string | boolean>,
   positionals: string[],
-  script: string
+  script: string,
 ) {
   const cwd = resolveCwd(flags, positionals);
   await runBunScript(cwd, script);
 }
 
-async function handleBuild(
-  flags: Record<string, string | boolean>,
-  positionals: string[]
-) {
+async function handleBuild(flags: Record<string, string | boolean>, positionals: string[]) {
   const cwd = resolveCwd(flags, positionals);
   const env = (flags.env as string | undefined)?.toLowerCase();
   const script = env ? `build:${env}` : "build:dev";
@@ -243,8 +231,8 @@ async function handleDoctor(flags: Record<string, string | boolean>) {
           `  electrobun: ${builder.electrobunVersion ?? "unknown"}`,
           `  platform: ${builder.platform}/${builder.arch}`,
           `  template: ${builder.templateDir}`,
-          `  workspace: ${builder.workspaceDir}`
-        ].join("\n")
+          `  workspace: ${builder.workspaceDir}`,
+        ].join("\n"),
       );
     }
   }

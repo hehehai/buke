@@ -108,10 +108,7 @@ function supportsSiteSafeArea(projectInfo: ProjectInfo) {
 }
 
 function hasInjection(inject?: InjectConfig) {
-  return (
-    (Array.isArray(inject?.css) && inject.css.length > 0) ||
-    (Array.isArray(inject?.js) && inject.js.length > 0)
-  );
+  return (inject?.css?.length ?? 0) > 0 || (inject?.js?.length ?? 0) > 0;
 }
 
 export async function syncRuntimeConfig(

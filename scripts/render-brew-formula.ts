@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import {
   DEFAULT_HOMEBREW_TAP_DIR,
   getArchivePath,

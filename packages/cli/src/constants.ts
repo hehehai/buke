@@ -11,7 +11,7 @@ export const TEXT_EXTENSIONS = new Set([
   ".md",
   ".html",
   ".css",
-  ".txt"
+  ".txt",
 ]);
 
 export const SHORT_FLAGS: Record<string, string> = {
@@ -28,5 +28,5 @@ export const SHORT_FLAGS: Record<string, string> = {
   t: "template",
   c: "cwd",
   e: "env",
-  u: "url"
+  u: "url",
 };

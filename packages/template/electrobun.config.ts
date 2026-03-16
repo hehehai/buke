@@ -8,13 +8,13 @@ export default {
   app: {
     name: "__APP_NAME__",
     identifier: "__APP_ID__",
-    version: "0.1.0"
+    version: "0.1.0",
   },
   build: {
     bun: {
       entrypoint: "src/bun/index.ts",
       minify: true,
-      sourcemap: "none"
+      sourcemap: "none",
     },
     useAsar: true,
     asarUnpack: [
@@ -24,18 +24,18 @@ export default {
       "*.so",
       "buke.config.json",
       "inject/*.css",
-      "inject/*.js"
+      "inject/*.js",
     ],
     macos: {
-      bundleCEF: false
+      bundleCEF: false,
     },
     win: {
       bundleCEF: false,
-      ...(winIcon ? { icon: winIcon } : {})
+      ...(winIcon ? { icon: winIcon } : {}),
     },
     linux: {
       bundleCEF: false,
-      ...(linuxIcon ? { icon: linuxIcon } : {})
+      ...(linuxIcon ? { icon: linuxIcon } : {}),
     },
     ...(macIcon ? { mac: { icons: macIcon } } : {}),
     copy: {
@@ -45,13 +45,13 @@ export default {
       "buke.config.json": "buke.config.json",
       "inject/custom.css": "inject/custom.css",
       "inject/custom.js": "inject/custom.js",
-      assets: "assets"
-    }
+      assets: "assets",
+    },
   },
   scripts: {
-    postPackage: "scripts/optimize-package.ts"
+    postPackage: "scripts/optimize-package.ts",
   },
   runtime: {
-    exitOnLastWindowClosed: false
-  }
+    exitOnLastWindowClosed: false,
+  },
 } satisfies ElectrobunConfig;

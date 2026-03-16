@@ -1,6 +1,6 @@
-import path from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Utils } from "electrobun/bun";
 
 export async function ensureSettingsPath() {

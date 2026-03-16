@@ -3,7 +3,7 @@ export async function runBunScript(cwd: string, script: string) {
     cwd,
     stdin: "inherit",
     stdout: "inherit",
-    stderr: "inherit"
+    stderr: "inherit",
   });
 
   const exitCode = await proc.exited;
@@ -14,7 +14,7 @@ export async function runBunScript(cwd: string, script: string) {
 
 export async function runBunInstall(
   cwd: string,
-  options: { production?: boolean; noCache?: boolean } = {}
+  options: { production?: boolean; noCache?: boolean } = {},
 ) {
   const args = ["bun", "install", "--no-progress"];
   if (options.noCache) {
@@ -28,7 +28,7 @@ export async function runBunInstall(
     cwd,
     stdin: "ignore",
     stdout: "inherit",
-    stderr: "inherit"
+    stderr: "inherit",
   });
 
   const exitCode = await proc.exited;

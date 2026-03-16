@@ -1,5 +1,5 @@
-import path from "node:path";
 import { existsSync } from "node:fs";
+import path from "node:path";
 import { Tray } from "electrobun/bun";
 
 export type TrayHandlers = {
@@ -29,14 +29,14 @@ export function setupTray(config: TrayConfig, handlers: TrayHandlers) {
   const tray = new Tray({
     image: trayIconPath,
     title: trayIconPath ? "" : config.appName,
-    template: true
+    template: true,
   });
 
   tray.setMenu([
     { type: "normal" as const, label: "Show", action: "tray-show" },
     { type: "normal" as const, label: "Hide", action: "tray-hide" },
     { type: "separator" as const },
-    { type: "normal" as const, label: "Quit", action: "tray-quit" }
+    { type: "normal" as const, label: "Quit", action: "tray-quit" },
   ]);
 
   tray.on("tray-clicked", (event) => {

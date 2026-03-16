@@ -1,6 +1,6 @@
-import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type { PackConfigFile } from "./config";
 
 export type LoadedPackConfig = {
@@ -10,9 +10,7 @@ export type LoadedPackConfig = {
 };
 
 export async function loadPackConfig(filePath: string): Promise<LoadedPackConfig> {
-  const resolved = path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(process.cwd(), filePath);
+  const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
 
   if (!existsSync(resolved)) {
     console.error(`Config file not found: ${resolved}`);
@@ -25,7 +23,7 @@ export async function loadPackConfig(filePath: string): Promise<LoadedPackConfig
     return {
       config: parsed,
       configPath: resolved,
-      configDir: path.dirname(resolved)
+      configDir: path.dirname(resolved),
     };
   } catch (error) {
     console.error(`Failed to read config file: ${resolved}`);

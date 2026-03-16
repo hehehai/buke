@@ -158,7 +158,7 @@ export function deriveSafeArea(flags: Flags, config?: PackConfigFile): SafeAreaC
   const left = toNumber(configSafe.left, 0);
   const right = toNumber(configSafe.right, 0);
   const bottom = toNumber(configSafe.bottom, 0);
-  const hasOverrides = top !== 0 || left !== 0 || right !== 0 || bottom !== 0;
+  const hasOverrides = [top, left, right, bottom].some((value) => value !== 0);
   const enabled = typeof configSafe.enabled === "boolean" ? configSafe.enabled : hasOverrides;
 
   if (!enabled) {

@@ -1,6 +1,6 @@
-import path from "node:path";
 import { existsSync } from "node:fs";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { ProjectInfo } from "./config";
 
 export type IconAssets = {
@@ -18,7 +18,7 @@ export async function prepareIconAssets(outDir: string, projectInfo: ProjectInfo
     projectInfo.icon,
     projectInfo.normalizedUrl,
     assetsDir,
-    "icon"
+    "icon",
   );
   const traySource = projectInfo.tray.icon
     ? await resolveIconSource(projectInfo.tray.icon, projectInfo.normalizedUrl, assetsDir, "tray")
@@ -31,7 +31,7 @@ export async function prepareIconAssets(outDir: string, projectInfo: ProjectInfo
     mac: mainIcons.mac,
     win: mainIcons.win,
     linux: mainIcons.linux,
-    tray: trayIcons.linux ?? mainIcons.linux
+    tray: trayIcons.linux ?? mainIcons.linux,
   } satisfies IconAssets;
 }
 
@@ -39,7 +39,7 @@ async function resolveIconSource(
   input: string | undefined,
   baseUrl: string,
   assetsDir: string,
-  prefix: string
+  prefix: string,
 ) {
   if (!input) {
     return await tryDownloadFavicon(baseUrl, assetsDir, prefix);
@@ -102,7 +102,7 @@ function guessExtension(url: string, contentType: string | null) {
 async function buildIconVariants(
   source: { path: string; isDir?: boolean } | null,
   assetsDir: string,
-  name: string
+  name: string,
 ) {
   if (!source) {
     return {} as IconAssets;
@@ -153,7 +153,7 @@ async function buildIconsetFromIcns(sourcePath: string, iconsetDir: string) {
   await rm(iconsetDir, { recursive: true, force: true });
   const proc = Bun.spawn(["iconutil", "-c", "iconset", sourcePath, "-o", iconsetDir], {
     stdout: "inherit",
-    stderr: "inherit"
+    stderr: "inherit",
   });
   const exitCode = await proc.exited;
   return exitCode === 0;
@@ -173,13 +173,13 @@ async function buildIconsetFromPng(sourcePath: string, iconsetDir: string) {
     const output2x = path.join(iconsetDir, `icon_${size}x${size}@2x.png`);
     const proc1 = Bun.spawn(
       ["sips", "-z", String(size), String(size), sourcePath, "--out", output],
-      { stdout: "ignore", stderr: "ignore" }
+      { stdout: "ignore", stderr: "ignore" },
     );
     await proc1.exited;
     const doubled = size * 2;
     const proc2 = Bun.spawn(
       ["sips", "-z", String(doubled), String(doubled), sourcePath, "--out", output2x],
-      { stdout: "ignore", stderr: "ignore" }
+      { stdout: "ignore", stderr: "ignore" },
     );
     await proc2.exited;
   }

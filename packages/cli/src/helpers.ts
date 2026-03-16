@@ -15,9 +15,7 @@ export function resolveCwd(flags: Flags, positionals: string[]) {
 
 export function normalizeUrl(input: string) {
   const trimmed = input.trim();
-  const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
+  const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
   return new URL(withScheme).toString();
 }
 

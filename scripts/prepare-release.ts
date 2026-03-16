@@ -2,11 +2,11 @@
 
 import { writeFile } from "node:fs/promises";
 import {
+  RELEASE_TARGETS,
   ensureCleanReleaseDir,
   getArchiveFileName,
   getArchivePath,
   getCliPackageMetadata,
-  RELEASE_TARGETS,
   sha256File,
 } from "./release-lib";
 

@@ -1,22 +1,22 @@
 import { execFileSync } from "node:child_process";
-import os from "node:os";
-import path from "node:path";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import {
   chmod,
-  cp,
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
-  readdir,
   readFile,
+  readdir,
   realpath,
   rename,
   rm,
   unlink,
-  writeFile
+  writeFile,
 } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { runBunInstall } from "./runner";
 
 const CACHE_DIR_ENV = "BUKE_CACHE_DIR";
@@ -64,7 +64,7 @@ export function resolveCacheDir() {
 export async function prepareBuilderWorkspace({
   templateDir,
   refresh = false,
-  offline = false
+  offline = false,
 }: {
   templateDir: string;
   refresh?: boolean;
@@ -86,19 +86,19 @@ export async function prepareBuilderWorkspace({
       key,
       status: "hit",
       timestamp: new Date().toISOString(),
-      workspaceDir
+      workspaceDir,
     });
     return {
       cacheDir,
       key,
       status: "hit",
-      workspaceDir
+      workspaceDir,
     };
   }
 
   if (offline) {
     throw new Error(
-      `Builder cache miss for ${key}. Re-run without --offline or warm the cache first.`
+      `Builder cache miss for ${key}. Re-run without --offline or warm the cache first.`,
     );
   }
 
@@ -109,39 +109,29 @@ export async function prepareBuilderWorkspace({
   try {
     await cp(templateDir, stagingWorkspaceDir, {
       recursive: true,
-      filter: (source) => !IGNORED_COPY_ENTRIES.has(path.basename(source))
+      filter: (source) => !IGNORED_COPY_ENTRIES.has(path.basename(source)),
     });
     const templatePackageJson = JSON.parse(
-      await readFile(path.join(templateDir, "package.json"), "utf8")
+      await readFile(path.join(templateDir, "package.json"), "utf8"),
     ) as {
       dependencies?: Record<string, string>;
     };
-    const electrobunVersion =
-      templatePackageJson.dependencies?.electrobun ?? "unknown";
+    const electrobunVersion = templatePackageJson.dependencies?.electrobun ?? "unknown";
     await copyTemplateBunStore(templateDir, buildersDir);
     await hydrateElectrobunCli(stagingWorkspaceDir, cacheDir);
 
-    const electrobunBinPath = path.join(
-      stagingWorkspaceDir,
-      "node_modules",
-      ".bin",
-      "electrobun"
-    );
+    const electrobunBinPath = path.join(stagingWorkspaceDir, "node_modules", ".bin", "electrobun");
 
     if (!existsSync(electrobunBinPath)) {
       const packageJsonPath = path.join(stagingWorkspaceDir, "package.json");
       const originalPackageJson = await readFile(packageJsonPath, "utf8");
 
-      await writeFile(
-        packageJsonPath,
-        sanitizeTemplatePackageJson(originalPackageJson),
-        "utf8"
-      );
+      await writeFile(packageJsonPath, sanitizeTemplatePackageJson(originalPackageJson), "utf8");
 
       try {
         await runBunInstall(stagingWorkspaceDir, {
           production: true,
-          noCache: true
+          noCache: true,
         });
       } finally {
         await writeFile(packageJsonPath, originalPackageJson, "utf8");
@@ -156,13 +146,13 @@ export async function prepareBuilderWorkspace({
       templateHash,
       platform: process.platform,
       arch: process.arch,
-      workspaceDir
+      workspaceDir,
     };
 
     await writeFile(
       path.join(stagingDir, "metadata.json"),
       `${JSON.stringify(metadata, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
 
     await rename(stagingDir, builderDir);
@@ -176,14 +166,14 @@ export async function prepareBuilderWorkspace({
     key,
     status,
     timestamp: new Date().toISOString(),
-    workspaceDir
+    workspaceDir,
   });
 
   return {
     cacheDir,
     key,
     status,
-    workspaceDir
+    workspaceDir,
   };
 }
 
@@ -205,7 +195,7 @@ export async function listBuilderWorkspaces() {
 
         const contents = await readFile(metadataPath, "utf8");
         return JSON.parse(contents) as BuilderMetadata;
-      })
+      }),
   );
 
   return builders
@@ -230,10 +220,10 @@ export async function listElectrobunCliCaches() {
           ? {
               binaryPath,
               key: entry.name,
-              valid: isUsableElectrobunCliBinary(binaryPath)
+              valid: isUsableElectrobunCliBinary(binaryPath),
             }
           : null;
-      })
+      }),
   );
 
   return caches.filter((cache): cache is ElectrobunCliCache => cache !== null);
@@ -255,8 +245,8 @@ export async function removeInvalidElectrobunCliCaches() {
 
   await Promise.all(
     invalidCaches.map((cache) =>
-      rm(path.dirname(cache.binaryPath), { recursive: true, force: true })
-    )
+      rm(path.dirname(cache.binaryPath), { recursive: true, force: true }),
+    ),
   );
 
   return invalidCaches;
@@ -268,7 +258,11 @@ async function hashDirectory(rootDir: string) {
   return hash.digest("hex");
 }
 
-async function walkDirectory(rootDir: string, currentDir: string, hash: ReturnType<typeof createHash>) {
+async function walkDirectory(
+  rootDir: string,
+  currentDir: string,
+  hash: ReturnType<typeof createHash>,
+) {
   const entries = await readdir(currentDir, { withFileTypes: true });
   entries.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -340,12 +334,12 @@ async function hydrateElectrobunCli(workspaceDir: string, cacheRootDir: string) 
   const packageBinBinary = path.join(electrobunDir, "bin", binaryName);
   const packageTarballPath = path.join(
     packageCacheDir,
-    `electrobun-${target.platform}-${target.arch}.tar.gz`
+    `electrobun-${target.platform}-${target.arch}.tar.gz`,
   );
   const sharedCacheDir = path.join(
     cacheRootDir,
     "electrobun-cli",
-    `${packageJson.version}-${target.platform}-${target.arch}`
+    `${packageJson.version}-${target.platform}-${target.arch}`,
   );
   const sharedCacheBinary = path.join(sharedCacheDir, binaryName);
 
@@ -372,7 +366,7 @@ async function hydrateElectrobunCli(workspaceDir: string, cacheRootDir: string) 
   try {
     execFileSync("tar", ["-xzf", packageTarballPath], {
       cwd: packageCacheDir,
-      stdio: "pipe"
+      stdio: "pipe",
     });
   } catch {
     await unlink(packageTarballPath).catch(() => undefined);
@@ -390,7 +384,7 @@ async function hydrateElectrobunCli(workspaceDir: string, cacheRootDir: string) 
 async function materializeElectrobunCli(
   sourceBinary: string,
   cacheBinary: string,
-  binBinary: string
+  binBinary: string,
 ) {
   await mkdir(path.dirname(cacheBinary), { recursive: true });
   await mkdir(path.dirname(binBinary), { recursive: true });
@@ -421,11 +415,7 @@ async function persistElectrobunCli(sourceBinary: string, sharedCacheBinary: str
 
 function getElectrobunTarget() {
   const platform =
-    process.platform === "win32"
-      ? "win"
-      : process.platform === "darwin"
-        ? "darwin"
-        : "linux";
+    process.platform === "win32" ? "win" : process.platform === "darwin" ? "darwin" : "linux";
   const arch = platform === "win" ? "x64" : process.arch;
   return { arch, platform };
 }
@@ -445,7 +435,7 @@ async function finalizeExecutable(binaryPath: string) {
 
   try {
     execFileSync("codesign", ["--force", "--sign", "-", binaryPath], {
-      stdio: "pipe"
+      stdio: "pipe",
     });
   } catch {
     // Fall back to the unsigned binary if ad-hoc signing is unavailable.
@@ -461,8 +451,10 @@ function isUsableElectrobunCliBinary(binaryPath: string) {
     return true;
   }
 
-  return !hasMacBinaryAttribute(binaryPath, "com.apple.provenance") &&
-    !hasMacBinaryAttribute(binaryPath, "com.apple.quarantine");
+  return (
+    !hasMacBinaryAttribute(binaryPath, "com.apple.provenance") &&
+    !hasMacBinaryAttribute(binaryPath, "com.apple.quarantine")
+  );
 }
 
 function hasMacBinaryAttribute(binaryPath: string, attribute: string) {
@@ -474,14 +466,11 @@ function hasMacBinaryAttribute(binaryPath: string, attribute: string) {
   }
 }
 
-async function saveLatestBuilderActivity(
-  cacheDir: string,
-  activity: LatestBuilderActivity
-) {
+async function saveLatestBuilderActivity(cacheDir: string, activity: LatestBuilderActivity) {
   await mkdir(cacheDir, { recursive: true });
   await writeFile(
     path.join(cacheDir, "latest-builder-activity.json"),
     `${JSON.stringify(activity, null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
 }

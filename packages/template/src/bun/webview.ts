@@ -46,9 +46,7 @@ export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
 
 export function applyZoom(webview: BrowserView, zoomLevel: number) {
   const zoomValue = zoomLevel.toFixed(2);
-  webview.executeJavascript(
-    `document.documentElement.style.zoom = ${JSON.stringify(zoomValue)};`
-  );
+  webview.executeJavascript(`document.documentElement.style.zoom = ${JSON.stringify(zoomValue)};`);
 }
 
 export function applyUserAgentOverride(webview: BrowserView, userAgentOverride: string) {
@@ -75,9 +73,9 @@ export function applyInjectionAssets(webview: BrowserView, assets: InjectionAsse
   for (const [index, css] of assets.css.entries()) {
     const styleId = `buke-inject-style-${index}`;
     const script = `(() => { const id=${JSON.stringify(
-      styleId
+      styleId,
     )}; let el=document.getElementById(id); if(!el){ el=document.createElement('style'); el.id=id; document.head.appendChild(el); } el.textContent=${JSON.stringify(
-      css
+      css,
     )}; })();`;
     webview.executeJavascript(script);
   }

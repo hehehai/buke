@@ -589,17 +589,11 @@ const normalizeLocale = (value?: string) => value?.trim().toLowerCase().replace(
 
 const resolveLocalePreset = (locale?: string) => {
   const normalized = normalizeLocale(locale);
-  if (!normalized) {
-    return PRESET_MENU_I18N.en;
-  }
-  if (PRESET_MENU_I18N[normalized]) {
-    return PRESET_MENU_I18N[normalized];
-  }
-  const base = normalized.split("-")[0];
-  if (PRESET_MENU_I18N[base]) {
-    return PRESET_MENU_I18N[base];
-  }
-  return PRESET_MENU_I18N.en;
+  return (
+    PRESET_MENU_I18N[normalized] ??
+    PRESET_MENU_I18N[normalized.split("-")[0]] ??
+    PRESET_MENU_I18N.en
+  );
 };
 
 const resolveMenuLocale = (localeConfig: MenuLocaleConfig = {}, locale?: string) => {

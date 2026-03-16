@@ -11,6 +11,7 @@ const REPO_ROOT = process.cwd();
 const TEMPLATE_DIR = path.join(REPO_ROOT, "packages", "template");
 const WORKSPACE_DIR = path.join(REPO_ROOT, ".cache", "template-dev");
 const DEFAULT_CONFIG_PATH = path.join("packages", "examples", "kimi", "buke.pack.json");
+const EXAMPLES_DIR = path.join(REPO_ROOT, "packages", "examples");
 
 const GENERATED_TEMPLATE_FILES = {
   packageJson: path.join(TEMPLATE_DIR, "package.json"),
@@ -125,25 +126,17 @@ function getConfigInput(argv: string[]) {
 
 function resolveConfigInput(rawInput: string) {
   const input = rawInput.trim();
-  const absoluteCandidate = path.resolve(REPO_ROOT, input);
+  const candidates = [
+    path.resolve(REPO_ROOT, input),
+    path.join(EXAMPLES_DIR, input, "buke.pack.json"),
+    path.resolve(REPO_ROOT, input.endsWith(".json") ? input : `${input}.json`),
+    path.join(EXAMPLES_DIR, `${input}.json`),
+  ];
 
-  if (existsSync(absoluteCandidate)) {
-    return absoluteCandidate;
-  }
-
-  const exampleCandidate = path.join(REPO_ROOT, "packages", "examples", input, "buke.pack.json");
-  if (existsSync(exampleCandidate)) {
-    return exampleCandidate;
-  }
-
-  const jsonCandidate = path.resolve(REPO_ROOT, input.endsWith(".json") ? input : `${input}.json`);
-  if (existsSync(jsonCandidate)) {
-    return jsonCandidate;
-  }
-
-  const fallbackJsonCandidate = path.join(REPO_ROOT, "packages", "examples", `${input}.json`);
-  if (existsSync(fallbackJsonCandidate)) {
-    return fallbackJsonCandidate;
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
   }
 
   throw new Error(
