@@ -1,24 +1,16 @@
 import Electrobun, { BrowserView, BrowserWindow, Session, Utils } from "electrobun/bun";
 import {
+  type BukeConfig,
   DEFAULT_CONFIG,
   type Settings,
-  type BukeConfig,
   loadConfig,
   normalizePartition,
   safeParseUrl,
 } from "./config";
+import { type AboutMenuConfig, type MenuLocaleConfig, buildMenu, handleMenuAction } from "./menu";
 import { ensureSettingsPath, readJson, saveSettings } from "./storage";
-import {
-  buildMenu,
-  handleMenuAction,
-  type AboutMenuConfig,
-} from "./menu";
 import { setupTray } from "./tray";
-import {
-  applyUserAgentOverride,
-  applyZoom,
-  buildNavigationRules,
-} from "./webview";
+import { applyUserAgentOverride, applyZoom, buildNavigationRules } from "./webview";
 
 const isMacOS = process.platform === "darwin";
 const { config: bukeConfig, configDir } = await loadConfig();
@@ -27,6 +19,11 @@ const APP_NAME = bukeConfig.name ?? "__APP_NAME__";
 const APP_URL = bukeConfig.url ?? "__APP_URL__";
 const APP_PARTITION = normalizePartition(bukeConfig.partition ?? DEFAULT_CONFIG.partition);
 const BASE_URL = safeParseUrl(APP_URL);
+const APP_LOCALE =
+  typeof bukeConfig.locale === "string" && bukeConfig.locale.trim()
+    ? bukeConfig.locale.trim()
+    : "en";
+const APP_I18N_MENU: MenuLocaleConfig = bukeConfig.i18n?.menu ?? {};
 
 const windowConfig = {
   ...DEFAULT_CONFIG.window,
@@ -56,7 +53,7 @@ const ZOOM_STEP = 0.1;
 const buildAboutMenu = (
   about: BukeConfig["about"],
   appName: string,
-  originUrl: string
+  originUrl: string,
 ): AboutMenuConfig => {
   if (!about?.enabled && about?.enabled !== undefined) {
     return [];
@@ -81,9 +78,7 @@ const buildAboutMenu = (
     }
 
     const label =
-      typeof item?.label === "string" && item.label.trim().length > 0
-        ? item.label.trim()
-        : url;
+      typeof item?.label === "string" && item.label.trim().length > 0 ? item.label.trim() : url;
     normalized.push({ type: "link", label, url });
   }
 
@@ -260,7 +255,7 @@ const openInBrowser = (url: string) => {
   if (process.platform === "win32") {
     Bun.spawn(["cmd", "/c", "start", "", target], {
       stdout: "ignore",
-      stderr: "ignore"
+      stderr: "ignore",
     });
     return;
   }
@@ -400,7 +395,7 @@ function createMainWindow() {
 }
 
 const aboutMenu = buildAboutMenu(bukeConfig.about, APP_NAME, APP_URL);
-buildMenu(APP_NAME, isMacOS, aboutMenu.length > 0, aboutMenu);
+buildMenu(APP_NAME, isMacOS, aboutMenu.length > 0, aboutMenu, APP_I18N_MENU, APP_LOCALE);
 warnProxyUnsupported();
 setupTray(
   { enabled: trayConfig.enabled, icon: trayConfig.icon, appName: APP_NAME, configDir },

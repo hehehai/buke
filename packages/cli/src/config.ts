@@ -41,6 +41,14 @@ export type AboutConfig = {
   items?: AboutMenuItemConfig[];
 };
 
+export type LocaleMenuConfig = {
+  [key: string]: string;
+};
+
+export type I18nConfig = {
+  menu?: LocaleMenuConfig;
+};
+
 export type InjectConfig = {
   css?: string[];
   js?: string[];
@@ -60,6 +68,8 @@ export type PackConfigFile = {
   inject?: InjectConfig;
   macosSafeArea?: Partial<SafeAreaConfig>;
   about?: AboutConfig;
+  locale?: string;
+  i18n?: I18nConfig;
 };
 
 export type ProjectInfo = {
@@ -73,6 +83,8 @@ export type ProjectInfo = {
   tray: TrayConfig;
   network: NetworkConfig;
   about?: AboutConfig;
+  locale?: string;
+  i18n?: I18nConfig;
   icon?: string;
   inject?: InjectConfig;
 };
@@ -81,7 +93,7 @@ export function deriveProjectInfo(
   urlInput: string,
   flags: Flags,
   config?: PackConfigFile,
-  configDir: string = process.cwd()
+  configDir: string = process.cwd(),
 ): ProjectInfo {
   const normalizedUrl = normalizeUrl(urlInput);
   const url = new URL(normalizedUrl);
@@ -104,7 +116,9 @@ export function deriveProjectInfo(
     network: deriveNetwork(flags, config),
     icon: resolveAssetPath(iconInput, configDir),
     about: config?.about,
-    inject: config?.inject
+    locale: config?.locale?.trim(),
+    i18n: config?.i18n,
+    inject: config?.inject,
   };
 }
 
@@ -171,9 +185,7 @@ export function deriveWindow(flags: Flags, config?: PackConfigFile): WindowConfi
       ? Boolean(flags.fullscreen)
       : Boolean(config?.window?.fullscreen);
   const maximized =
-    flags.maximized !== undefined
-      ? Boolean(flags.maximized)
-      : Boolean(config?.window?.maximized);
+    flags.maximized !== undefined ? Boolean(flags.maximized) : Boolean(config?.window?.maximized);
 
   return { width, height, minWidth, minHeight, hideTitleBar, fullscreen, maximized };
 }
@@ -181,7 +193,7 @@ export function deriveWindow(flags: Flags, config?: PackConfigFile): WindowConfi
 export function deriveTray(
   flags: Flags,
   config?: PackConfigFile,
-  configDir: string = process.cwd()
+  configDir: string = process.cwd(),
 ): TrayConfig {
   const enabled =
     flags["show-system-tray"] !== undefined

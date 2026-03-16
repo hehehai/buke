@@ -44,6 +44,8 @@ buke pack --config ./buke.pack.json
 - `outDir`：打包输出目录（默认 `dist/<slug>`）。
 - `env`：构建环境，`dev | canary | stable`。
 - `about`：配置应用菜单里的 About 区域。
+- `locale`：语言标识（如 `"en"`、`"zh-CN"`）。用于文档 `lang` 与菜单文案上下文。
+- `i18n.menu`：菜单文案自定义映射，例如 `"reload": "重新加载"`。
 
 ### about
 
@@ -53,6 +55,46 @@ buke pack --config ./buke.pack.json
   - 分割线：`{ "separator": true }`
 
 默认未配置 `items` 时，会自动添加一个显示应用名（如 `Kimi`）的项，点击后在默认浏览器中打开该应用源站链接。
+
+### i18n
+
+- `i18n`：运行时界面国际化配置。
+- `i18n.menu`：内置菜单文案键值覆盖。
+
+只设置 `locale` 时会自动使用内置菜单语言包（支持 20+ 语言）。`i18n.menu` 可继续对特定 key 做覆盖。
+
+支持的菜单键：
+
+- `view`、`window`、`about`
+- `reload`、`toggleDevTools`、`clearSiteData`、`closeWindow`、`quit`
+- `zoomIn`、`zoomOut`、`zoomReset`
+- `compact`、`standard`、`wide`
+
+以上字段均为可选，未设置时自动回退到英文。
+
+内置支持的 locale：
+
+- `en`, `en-US`, `en-GB`
+- `zh-CN`, `zh-Hans`, `zh-SG`
+- `zh-TW`, `zh-HK`, `zh-Hant`
+- `ja`, `ja-JP`
+- `ko`, `ko-KR`
+- `fr`, `fr-FR`
+- `de`, `de-DE`
+- `es`, `es-ES`
+- `it`, `it-IT`
+- `pt`, `pt-BR`, `pt-PT`
+- `ru`
+- `ar`
+- `tr`
+- `vi`
+- `id`
+- `th`
+- `nl`
+- `sv`
+- `no`
+- `da`
+- `fi`
 
 ### window
 

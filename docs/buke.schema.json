@@ -21,6 +21,10 @@
       "format": "uri",
       "description": "Web app URL to wrap."
     },
+    "locale": {
+      "type": "string",
+      "description": "Preferred language code for runtime rendering and UI labels."
+    },
     "partition": {
       "type": "string",
       "description": "Webview session partition (e.g. persist:default)."
@@ -117,6 +121,19 @@
         }
       },
       "description": "About menu configuration."
+    },
+    "i18n": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "menu": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Runtime UI localization overrides."
     }
   }
 }

@@ -1,21 +1,16 @@
-import path from "node:path";
 import { existsSync, watch } from "node:fs";
 import type { FSWatcher } from "node:fs";
 import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import { deriveProjectInfo, type ProjectInfo } from "../packages/cli/src/config";
+import path from "node:path";
+import { type ProjectInfo, deriveProjectInfo } from "../packages/cli/src/config";
 import { loadPackConfig } from "../packages/cli/src/config-file";
-import { prepareIconAssets, type IconAssets } from "../packages/cli/src/icons";
+import { type IconAssets, prepareIconAssets } from "../packages/cli/src/icons";
 import { syncRuntimeConfig } from "../packages/cli/src/scaffold";
 
 const REPO_ROOT = process.cwd();
 const TEMPLATE_DIR = path.join(REPO_ROOT, "packages", "template");
 const WORKSPACE_DIR = path.join(REPO_ROOT, ".cache", "template-dev");
-const DEFAULT_CONFIG_PATH = path.join(
-  "packages",
-  "examples",
-  "kimi",
-  "buke.pack.json"
-);
+const DEFAULT_CONFIG_PATH = path.join("packages", "examples", "kimi", "buke.pack.json");
 
 const GENERATED_TEMPLATE_FILES = {
   packageJson: path.join(TEMPLATE_DIR, "package.json"),
@@ -122,10 +117,38 @@ function getConfigInput(argv: string[]) {
   }
 
   if (argv[0] && !argv[0].startsWith("-")) {
-    return argv[0];
+    return resolveConfigInput(argv[0]);
   }
 
   return DEFAULT_CONFIG_PATH;
+}
+
+function resolveConfigInput(rawInput: string) {
+  const input = rawInput.trim();
+  const absoluteCandidate = path.resolve(REPO_ROOT, input);
+
+  if (existsSync(absoluteCandidate)) {
+    return absoluteCandidate;
+  }
+
+  const exampleCandidate = path.join(REPO_ROOT, "packages", "examples", input, "buke.pack.json");
+  if (existsSync(exampleCandidate)) {
+    return exampleCandidate;
+  }
+
+  const jsonCandidate = path.resolve(REPO_ROOT, input.endsWith(".json") ? input : `${input}.json`);
+  if (existsSync(jsonCandidate)) {
+    return jsonCandidate;
+  }
+
+  const fallbackJsonCandidate = path.join(REPO_ROOT, "packages", "examples", `${input}.json`);
+  if (existsSync(fallbackJsonCandidate)) {
+    return fallbackJsonCandidate;
+  }
+
+  throw new Error(
+    `Config not found: ${rawInput}. Use one of:\n- a config path like packages/examples/<name>/buke.pack.json\n- an example name like deepseek/kimi/twitter`,
+  );
 }
 
 async function loadProject(configInput: string) {
@@ -152,7 +175,7 @@ async function linkWorkspaceSources() {
   await linkDir(path.join(TEMPLATE_DIR, "src", "bun"), path.join(WORKSPACE_DIR, "src", "bun"));
   await linkFile(
     path.join(TEMPLATE_DIR, "src", "views", "styles.css"),
-    path.join(WORKSPACE_DIR, "src", "views", "styles.css")
+    path.join(WORKSPACE_DIR, "src", "views", "styles.css"),
   );
   await linkDir(path.join(TEMPLATE_DIR, "inject"), path.join(WORKSPACE_DIR, "inject"));
   await linkDir(path.join(TEMPLATE_DIR, "scripts"), path.join(WORKSPACE_DIR, "scripts"));
@@ -178,7 +201,7 @@ async function closeRunningDevApp(projectInfo: ProjectInfo) {
     WORKSPACE_DIR,
     "build",
     "dev-macos-arm64",
-    `${projectInfo.appName}-dev.app`
+    `${projectInfo.appName}-dev.app`,
   );
   const killResult = Bun.spawnSync(["pkill", "-f", appBundlePath], {
     stdout: "ignore",
@@ -222,15 +245,10 @@ async function renderIndexHtml(projectInfo: ProjectInfo) {
   const output = template
     .replaceAll("__APP_NAME__", projectInfo.appName)
     .replaceAll("__APP_URL__", projectInfo.normalizedUrl)
+    .replaceAll("__APP_LOCALE__", projectInfo.locale ? projectInfo.locale.trim() : "en")
     .replaceAll("__APP_PARTITION__", projectInfo.partition)
-    .replaceAll(
-      "__SAFE_AREA_PENDING__",
-      supportsSiteSafeArea(projectInfo) ? "true" : "false",
-    )
-    .replaceAll(
-      "__INIT_PENDING__",
-      shouldKeepHidden(projectInfo) ? "true" : "false",
-    );
+    .replaceAll("__SAFE_AREA_PENDING__", supportsSiteSafeArea(projectInfo) ? "true" : "false")
+    .replaceAll("__INIT_PENDING__", shouldKeepHidden(projectInfo) ? "true" : "false");
 
   await writeFile(path.join(WORKSPACE_DIR, "src", "views", "index.html"), output, "utf8");
 }
@@ -325,7 +343,7 @@ async function linkNodeModules() {
     await symlink(
       candidate,
       workspaceNodeModules,
-      process.platform === "win32" ? "junction" : "dir"
+      process.platform === "win32" ? "junction" : "dir",
     );
     return;
   }

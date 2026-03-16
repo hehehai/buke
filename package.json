@@ -13,7 +13,6 @@
     "release:brew-formula": "bun run scripts/render-brew-formula.ts",
     "dev": "bun run --cwd packages/cli dev",
     "dev:template": "bun run scripts/dev-template.ts",
-    "dev:template:kimi": "bun run scripts/dev-template.ts --config packages/examples/kimi/buke.pack.json",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",

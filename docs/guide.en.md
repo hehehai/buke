@@ -44,6 +44,8 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 - `outDir`: Pack output directory (default `dist/<slug>`).
 - `env`: Build environment `dev | canary | stable`.
 - `about`: Configure the About menu section.
+- `locale`: Preferred locale string (for example `"en"` or `"zh-CN"`). Used for HTML `lang` and menu label fallback context.
+- `i18n.menu`: Custom label overrides keyed by menu token (for example `"reload": "重新加载"`).
 
 ### about
 
@@ -53,6 +55,46 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
   - Separator item: `{ "separator": true }`
 
 If `items` is omitted, a default entry labeled with the app name (for example `Kimi`) is added automatically, and it opens the app URL in the system default browser.
+
+### i18n
+
+- `i18n`: Internationalization config for runtime UI.
+- `i18n.menu`: Map of built-in menu labels.
+
+If you only set `locale`, menus will use built-in presets automatically (20+ locales supported). `i18n.menu` still overrides any preset keys.
+
+Supported menu keys:
+
+- `view`, `window`, `about`
+- `reload`, `toggleDevTools`, `clearSiteData`, `closeWindow`, `quit`
+- `zoomIn`, `zoomOut`, `zoomReset`
+- `compact`, `standard`, `wide`
+
+All keys are optional. Missing keys fall back to English.
+
+Built-in supported locales:
+
+- `en`, `en-US`, `en-GB`
+- `zh-CN`, `zh-Hans`, `zh-SG`
+- `zh-TW`, `zh-HK`, `zh-Hant`
+- `ja`, `ja-JP`
+- `ko`, `ko-KR`
+- `fr`, `fr-FR`
+- `de`, `de-DE`
+- `es`, `es-ES`
+- `it`, `it-IT`
+- `pt`, `pt-BR`, `pt-PT`
+- `ru`
+- `ar`
+- `tr`
+- `vi`
+- `id`
+- `th`
+- `nl`
+- `sv`
+- `no`
+- `da`
+- `fi`
 
 ### window
 

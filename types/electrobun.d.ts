@@ -1,3 +1,14 @@
+type ElectrobunEventData = {
+  allowed?: boolean;
+  action?: string;
+  url?: string;
+  [key: string]: unknown;
+};
+
+type ElectrobunEvent = {
+  data: ElectrobunEventData;
+};
+
 declare module "electrobun/bun" {
   export type ApplicationMenuItemConfig = {
     label?: string;
@@ -18,7 +29,7 @@ declare module "electrobun/bun" {
     webview: { id: number };
     static getAll(): BrowserView[];
     setNavigationRules(rules: string[]): void;
-    on(event: string, handler: (event: any) => void): void;
+    on(event: string, handler: (event: ElectrobunEvent) => void): void;
     executeJavascript(script: string): void;
     toggleDevTools(): void;
   }
@@ -41,7 +52,7 @@ declare module "electrobun/bun" {
     unminimize(): void;
     isMinimized(): boolean;
     getSize(): { width: number; height: number };
-    on(event: string, handler: (event: any) => void): void;
+    on(event: string, handler: (event: ElectrobunEvent) => void): void;
   }
 
   export class Session {
@@ -58,13 +69,17 @@ declare module "electrobun/bun" {
       width?: number;
       height?: number;
     });
-    setMenu(menu: Array<{ type?: "normal" | "separator" | "divider"; label?: string; action?: string }>): void;
-    on(event: "tray-clicked", handler: (event: any) => void): void;
+    setMenu(
+      menu: Array<{ type?: "normal" | "separator" | "divider"; label?: string; action?: string }>,
+    ): void;
+    on(event: "tray-clicked", handler: (event: ElectrobunEvent) => void): void;
   }
 
   export const Utils: { quit: () => void; paths: { userData: string } };
 
-  const Electrobun: { events: { on: (event: string, handler: (event: any) => void) => void } };
+  const Electrobun: {
+    events: { on: (event: string, handler: (event: ElectrobunEvent) => void) => void };
+  };
   export default Electrobun;
 }
 

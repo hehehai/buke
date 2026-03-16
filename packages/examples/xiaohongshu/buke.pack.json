@@ -1,5 +1,6 @@
 {
   "$schema": "../../../docs/buke.schema.json",
   "name": "XiaoHongShu",
-  "url": "https://www.xiaohongshu.com"
+  "url": "https://www.xiaohongshu.com",
+  "locale": "zh-CN"
 }

@@ -1,5 +1,8 @@
 {
   "$schema": "../../../docs/buke.schema.json",
   "name": "Excalidraw",
-  "url": "https://excalidraw.com"
+  "url": "https://excalidraw.com",
+  "window": {
+    "hideTitleBar": true
+  }
 }

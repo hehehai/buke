@@ -1,8 +1,8 @@
-import path from "node:path";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { TEXT_EXTENSIONS } from "./constants";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { InjectConfig, ProjectInfo } from "./config";
+import { TEXT_EXTENSIONS } from "./constants";
 import { prepareIconAssets } from "./icons";
 
 const IGNORED_TEMPLATE_ENTRIES = new Set([".git", "build", "dist", "node_modules"]);
@@ -43,7 +43,7 @@ export async function prepareOutDir(dir: string, force: boolean) {
 export async function scaffoldProject({
   outDir,
   templateDir,
-  projectInfo
+  projectInfo,
 }: {
   outDir: string;
   templateDir: string;
@@ -52,7 +52,7 @@ export async function scaffoldProject({
   await ensureEmptyDir(outDir);
   await cp(templateDir, outDir, {
     recursive: true,
-    filter: (source) => !IGNORED_TEMPLATE_ENTRIES.has(path.basename(source))
+    filter: (source) => !IGNORED_TEMPLATE_ENTRIES.has(path.basename(source)),
   });
   await applyProjectInfo(outDir, projectInfo);
   await syncRuntimeConfig(outDir, projectInfo);
@@ -72,22 +72,23 @@ export async function applyProjectInfo(rootDir: string, projectInfo: ProjectInfo
     ["__APP_PARTITION__", projectInfo.partition],
     ["__SAFE_AREA_PENDING__", safeAreaPending ? "true" : "false"],
     ["__INIT_PENDING__", initPending ? "true" : "false"],
-    ["\"__WINDOW_WIDTH__\"", String(projectInfo.window.width)],
-    ["\"__WINDOW_HEIGHT__\"", String(projectInfo.window.height)],
-    ["\"__WINDOW_MIN_WIDTH__\"", String(projectInfo.window.minWidth)],
-    ["\"__WINDOW_MIN_HEIGHT__\"", String(projectInfo.window.minHeight)],
-    ["\"__HIDE_TITLE_BAR__\"", projectInfo.window.hideTitleBar ? "true" : "false"],
-    ["\"__WINDOW_FULLSCREEN__\"", projectInfo.window.fullscreen ? "true" : "false"],
-    ["\"__WINDOW_MAXIMIZED__\"", projectInfo.window.maximized ? "true" : "false"],
-    ["\"__TRAY_ENABLED__\"", projectInfo.tray.enabled ? "true" : "false"],
-    ["\"__TRAY_ICON__\"", JSON.stringify(trayIcon ?? "")],
-    ["\"__HIDE_ON_CLOSE__\"", projectInfo.tray.hideOnClose ? "true" : "false"],
-    ["\"__USER_AGENT__\"", JSON.stringify(projectInfo.network.userAgent ?? "")],
-    ["\"__PROXY_URL__\"", JSON.stringify(projectInfo.network.proxyUrl ?? "")],
-    ["\"__ICON_MAC__\"", JSON.stringify(iconAssets.mac ?? "")],
-    ["\"__ICON_WIN__\"", JSON.stringify(iconAssets.win ?? "")],
-    ["\"__ICON_LINUX__\"", JSON.stringify(iconAssets.linux ?? "")],
-    ["__CREATED_AT__", new Date().toISOString()]
+    ["__APP_LOCALE__", projectInfo.locale ? projectInfo.locale.trim() : "en"],
+    ['"__WINDOW_WIDTH__"', String(projectInfo.window.width)],
+    ['"__WINDOW_HEIGHT__"', String(projectInfo.window.height)],
+    ['"__WINDOW_MIN_WIDTH__"', String(projectInfo.window.minWidth)],
+    ['"__WINDOW_MIN_HEIGHT__"', String(projectInfo.window.minHeight)],
+    ['"__HIDE_TITLE_BAR__"', projectInfo.window.hideTitleBar ? "true" : "false"],
+    ['"__WINDOW_FULLSCREEN__"', projectInfo.window.fullscreen ? "true" : "false"],
+    ['"__WINDOW_MAXIMIZED__"', projectInfo.window.maximized ? "true" : "false"],
+    ['"__TRAY_ENABLED__"', projectInfo.tray.enabled ? "true" : "false"],
+    ['"__TRAY_ICON__"', JSON.stringify(trayIcon ?? "")],
+    ['"__HIDE_ON_CLOSE__"', projectInfo.tray.hideOnClose ? "true" : "false"],
+    ['"__USER_AGENT__"', JSON.stringify(projectInfo.network.userAgent ?? "")],
+    ['"__PROXY_URL__"', JSON.stringify(projectInfo.network.proxyUrl ?? "")],
+    ['"__ICON_MAC__"', JSON.stringify(iconAssets.mac ?? "")],
+    ['"__ICON_WIN__"', JSON.stringify(iconAssets.win ?? "")],
+    ['"__ICON_LINUX__"', JSON.stringify(iconAssets.linux ?? "")],
+    ["__CREATED_AT__", new Date().toISOString()],
   ]);
 
   await replacePlaceholders(rootDir, replacements);
@@ -108,21 +109,21 @@ function supportsSiteSafeArea(projectInfo: ProjectInfo) {
 
 function hasInjection(inject?: InjectConfig) {
   return (
-    Array.isArray(inject?.css) && inject.css.length > 0
-    || Array.isArray(inject?.js) && inject.js.length > 0
+    (Array.isArray(inject?.css) && inject.css.length > 0) ||
+    (Array.isArray(inject?.js) && inject.js.length > 0)
   );
 }
 
 export async function syncRuntimeConfig(
   rootDir: string,
   projectInfo: ProjectInfo,
-  configDir: string = process.cwd()
+  configDir: string = process.cwd(),
 ) {
   const runtimeConfig: Record<string, unknown> = {
     name: projectInfo.appName,
     url: projectInfo.normalizedUrl,
     id: projectInfo.appId,
-    templateVersion: "0.1.0"
+    templateVersion: "0.1.0",
   };
 
   if (projectInfo.partition !== "persist:default") {
@@ -184,13 +185,21 @@ export async function syncRuntimeConfig(
     runtimeConfig.about = projectInfo.about;
   }
 
+  if (projectInfo.locale?.trim()) {
+    runtimeConfig.locale = projectInfo.locale.trim();
+  }
+
+  if (projectInfo.i18n && Object.keys(projectInfo.i18n).length > 0) {
+    runtimeConfig.i18n = projectInfo.i18n;
+  }
+
   if (projectInfo.safeArea.enabled) {
     runtimeConfig.macosSafeArea = {
       enabled: true,
       top: projectInfo.safeArea.top,
       left: projectInfo.safeArea.left,
       right: projectInfo.safeArea.right,
-      bottom: projectInfo.safeArea.bottom
+      bottom: projectInfo.safeArea.bottom,
     };
   }
 
@@ -205,15 +214,15 @@ export async function syncRuntimeConfig(
       injectConfig,
       shouldApplySafeAreaPreload(projectInfo)
         ? buildSafeAreaCss(projectInfo.normalizedUrl, projectInfo.safeArea.top)
-        : null
+        : null,
     )}\n`,
-    "utf8"
+    "utf8",
   );
 
   await writeFile(
     path.join(rootDir, "buke.config.json"),
     `${JSON.stringify(runtimeConfig, null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
 }
 
@@ -221,18 +230,18 @@ const INLINE_PREFIX = "inline:";
 
 async function resolveInjectionConfig(
   inject: InjectConfig | undefined,
-  configDir: string
+  configDir: string,
 ): Promise<{ css: string[]; js: string[] }> {
   const [css, js] = await Promise.all([
     resolveInjectEntries(inject?.css, configDir),
-    resolveInjectEntries(inject?.js, configDir)
+    resolveInjectEntries(inject?.js, configDir),
   ]);
   return { css, js };
 }
 
 async function resolveInjectEntries(
   entries: string[] | undefined,
-  configDir: string
+  configDir: string,
 ): Promise<string[]> {
   if (!Array.isArray(entries) || entries.length === 0) {
     return [];
@@ -262,10 +271,7 @@ async function resolveInjectEntries(
   return normalized;
 }
 
-function buildInjectionPreloadScript(
-  inject: InjectConfig,
-  safeAreaCss: string | null
-): string {
+function buildInjectionPreloadScript(inject: InjectConfig, safeAreaCss: string | null): string {
   const styleInjections = inject.css ?? [];
   const scriptInjections = inject.js ?? [];
   const cssEntries = styleInjections
@@ -276,31 +282,31 @@ function buildInjectionPreloadScript(
     .filter((js) => js.trim() !== "");
 
   const lines: string[] = [];
-  lines.push(`(() => {`);
-  lines.push(`  const ensureStyle = (id, text) => {`);
-  lines.push(`    if (!text) {`);
-  lines.push(`      return;`);
-  lines.push(`    }`);
-  lines.push(`    let style = document.getElementById(id);`);
-  lines.push(`    if (!style) {`);
+  lines.push("(() => {");
+  lines.push("  const ensureStyle = (id, text) => {");
+  lines.push("    if (!text) {");
+  lines.push("      return;");
+  lines.push("    }");
+  lines.push("    let style = document.getElementById(id);");
+  lines.push("    if (!style) {");
   lines.push(`      style = document.createElement("style");`);
-  lines.push(`      style.id = id;`);
-  lines.push(`      (document.head || document.documentElement).appendChild(style);`);
-  lines.push(`    }`);
-  lines.push(`    style.textContent = text;`);
-  lines.push(`  };`);
-  lines.push(`  const runScript = (source) => {`);
-  lines.push(`    if (!source) {`);
-  lines.push(`      return;`);
-  lines.push(`    }`);
-  lines.push(`    try {`);
-  lines.push(`      (new Function(source))();`);
-  lines.push(`    } catch (error) {}`);
-  lines.push(`  };`);
+  lines.push("      style.id = id;");
+  lines.push("      (document.head || document.documentElement).appendChild(style);");
+  lines.push("    }");
+  lines.push("    style.textContent = text;");
+  lines.push("  };");
+  lines.push("  const runScript = (source) => {");
+  lines.push("    if (!source) {");
+  lines.push("      return;");
+  lines.push("    }");
+  lines.push("    try {");
+  lines.push("      (new Function(source))();");
+  lines.push("    } catch (error) {}");
+  lines.push("  };");
 
   for (const [index, css] of cssEntries.entries()) {
     lines.push(
-      `  ensureStyle(${JSON.stringify(`buke-inject-style-${index}`)}, ${JSON.stringify(css)});`
+      `  ensureStyle(${JSON.stringify(`buke-inject-style-${index}`)}, ${JSON.stringify(css)});`,
     );
   }
 
@@ -312,7 +318,7 @@ function buildInjectionPreloadScript(
     lines.push(`  runScript(${JSON.stringify(script)});`);
   }
 
-  lines.push(`})();`);
+  lines.push("})();");
 
   return lines.join("\n");
 }

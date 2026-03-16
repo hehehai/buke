@@ -1,6 +1,6 @@
-import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { Utils } from "electrobun/bun";
 
 export type BukeConfig = {
@@ -47,6 +47,12 @@ export type BukeConfig = {
       separator?: boolean;
     }[];
   };
+  locale?: string;
+  i18n?: {
+    menu?: {
+      [key: string]: string;
+    };
+  };
 };
 
 export type InjectionAssets = {
@@ -65,6 +71,7 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
   tray: Required<NonNullable<BukeConfig["tray"]>>;
   network: Required<NonNullable<BukeConfig["network"]>>;
   about: Required<NonNullable<BukeConfig["about"]>>;
+  i18n: Required<NonNullable<BukeConfig["i18n"]>>;
 } = {
   partition: "persist:default",
   zoom: 1,
@@ -77,28 +84,31 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
     minHeight: 640,
     hideTitleBar: false,
     fullscreen: false,
-    maximized: false
+    maximized: false,
   },
   tray: {
     enabled: false,
     icon: "",
-    hideOnClose: process.platform === "darwin"
+    hideOnClose: process.platform === "darwin",
   },
   network: {
     userAgent: "",
-    proxyUrl: ""
+    proxyUrl: "",
   },
   macosSafeArea: {
     enabled: false,
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0
+    bottom: 0,
   },
   about: {
     enabled: true,
-    items: []
-  }
+    items: [],
+  },
+  i18n: {
+    menu: {},
+  },
 };
 
 export function normalizePartition(value: string) {
@@ -115,7 +125,7 @@ export async function loadConfig() {
     path.resolve(process.cwd(), "buke.config.json"),
     path.join(Utils.paths.userData, "buke.config.json"),
     path.join(packagedResourcesDir, "app.asar.unpacked", "buke.config.json"),
-    path.join(packagedResourcesDir, "app", "buke.config.json")
+    path.join(packagedResourcesDir, "app", "buke.config.json"),
   ];
 
   for (const candidate of candidates) {
@@ -127,7 +137,7 @@ export async function loadConfig() {
     const parsed = JSON.parse(raw) as BukeConfig;
     return {
       config: normalizeConfig(parsed),
-      configDir: path.dirname(candidate)
+      configDir: path.dirname(candidate),
     };
   }
 
@@ -140,31 +150,37 @@ export function normalizeConfig(config: BukeConfig): BukeConfig {
     ...config,
     window: {
       ...DEFAULT_CONFIG.window,
-      ...(config.window ?? {})
+      ...(config.window ?? {}),
     },
     tray: {
       ...DEFAULT_CONFIG.tray,
-      ...(config.tray ?? {})
+      ...(config.tray ?? {}),
     },
     network: {
       ...DEFAULT_CONFIG.network,
-      ...(config.network ?? {})
+      ...(config.network ?? {}),
     },
     macosSafeArea: {
       ...DEFAULT_CONFIG.macosSafeArea,
-      ...(config.macosSafeArea ?? {})
+      ...(config.macosSafeArea ?? {}),
     },
     inject: {
       ...DEFAULT_CONFIG.inject,
-      ...(config.inject ?? {})
+      ...(config.inject ?? {}),
     },
     about: {
       ...DEFAULT_CONFIG.about,
       ...(config.about ?? {}),
-      items: Array.isArray(config.about?.items)
-        ? config.about.items
-        : DEFAULT_CONFIG.about.items
-    }
+      items: Array.isArray(config.about?.items) ? config.about.items : DEFAULT_CONFIG.about.items,
+    },
+    i18n: {
+      ...DEFAULT_CONFIG.i18n,
+      ...(config.i18n ?? {}),
+      menu: {
+        ...DEFAULT_CONFIG.i18n.menu,
+        ...(config.i18n?.menu ?? {}),
+      },
+    },
   };
 }
 
