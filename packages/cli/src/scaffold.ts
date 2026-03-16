@@ -54,12 +54,13 @@ export async function scaffoldProject({
     filter: (source) => !IGNORED_TEMPLATE_ENTRIES.has(path.basename(source))
   });
   await applyProjectInfo(outDir, projectInfo);
-  await writeRuntimeConfig(outDir, projectInfo);
+  await syncRuntimeConfig(outDir, projectInfo);
 }
 
 export async function applyProjectInfo(rootDir: string, projectInfo: ProjectInfo) {
   const iconAssets = await prepareIconAssets(rootDir, projectInfo);
   const trayIcon = projectInfo.tray.icon ?? iconAssets.tray ?? iconAssets.linux;
+  const safeAreaPending = supportsSiteSafeArea(projectInfo);
 
   const replacements = new Map<string, string>([
     ["__APP_NAME__", projectInfo.appName],
@@ -67,15 +68,7 @@ export async function applyProjectInfo(rootDir: string, projectInfo: ProjectInfo
     ["__APP_ID__", projectInfo.appId],
     ["__APP_URL__", projectInfo.normalizedUrl],
     ["__APP_PARTITION__", projectInfo.partition],
-    ["\"__SAFE_AREA_ENABLED__\"", projectInfo.safeArea.enabled ? "true" : "false"],
-    ["\"__SAFE_AREA_TOP__\"", String(projectInfo.safeArea.top)],
-    ["\"__SAFE_AREA_LEFT__\"", String(projectInfo.safeArea.left)],
-    ["\"__SAFE_AREA_RIGHT__\"", String(projectInfo.safeArea.right)],
-    ["\"__SAFE_AREA_BOTTOM__\"", String(projectInfo.safeArea.bottom)],
-    ["__SAFE_AREA_TOP__", String(projectInfo.safeArea.top)],
-    ["__SAFE_AREA_LEFT__", String(projectInfo.safeArea.left)],
-    ["__SAFE_AREA_RIGHT__", String(projectInfo.safeArea.right)],
-    ["__SAFE_AREA_BOTTOM__", String(projectInfo.safeArea.bottom)],
+    ["__SAFE_AREA_PENDING__", safeAreaPending ? "true" : "false"],
     ["\"__WINDOW_WIDTH__\"", String(projectInfo.window.width)],
     ["\"__WINDOW_HEIGHT__\"", String(projectInfo.window.height)],
     ["\"__WINDOW_MIN_WIDTH__\"", String(projectInfo.window.minWidth)],
@@ -97,7 +90,20 @@ export async function applyProjectInfo(rootDir: string, projectInfo: ProjectInfo
   await replacePlaceholders(rootDir, replacements);
 }
 
-async function writeRuntimeConfig(rootDir: string, projectInfo: ProjectInfo) {
+function supportsSiteSafeArea(projectInfo: ProjectInfo) {
+  if (!projectInfo.window.hideTitleBar || !projectInfo.safeArea.enabled) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(projectInfo.normalizedUrl).hostname;
+    return hostname === "kimi.com" || hostname === "www.kimi.com";
+  } catch {
+    return false;
+  }
+}
+
+export async function syncRuntimeConfig(rootDir: string, projectInfo: ProjectInfo) {
   const runtimeConfig: Record<string, unknown> = {
     name: projectInfo.appName,
     url: projectInfo.normalizedUrl,

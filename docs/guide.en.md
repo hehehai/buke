@@ -12,7 +12,7 @@ buke pack https://www.kimi.com --name Kimi --force
 buke pack --config ./buke.pack.json
 ```
 
-> Electrobun is pinned in the template. Current version: `1.15.1`.
+> Electrobun is pinned in the template. Current version: `1.16.0`.
 
 ## Config File Structure
 

@@ -16,7 +16,7 @@ bun run dev
 ## Version sync
 
 - Electrobun is pinned in `packages/template/package.json` for reproducible pack builds.
-- Current pinned Electrobun version: `1.15.1`.
+- Current pinned Electrobun version: `1.16.0`.
 - To upgrade Electrobun, update the pinned template dependency and refresh the builder cache.
 
 ## Repo layout

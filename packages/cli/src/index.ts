@@ -17,7 +17,7 @@ import { deriveProjectInfo } from "./config";
 import { loadPackConfig } from "./config-file";
 import { resolveCwd, resolveTemplateDir } from "./helpers";
 import { runBunScript } from "./runner";
-import { applyProjectInfo, prepareOutDir, scaffoldProject } from "./scaffold";
+import { applyProjectInfo, prepareOutDir, scaffoldProject, syncRuntimeConfig } from "./scaffold";
 import { VERSION } from "./constants";
 
 async function main() {
@@ -156,6 +156,7 @@ async function handlePack(
   try {
     await cp(builder.workspaceDir, tempDir, { recursive: true });
     await applyProjectInfo(tempDir, projectInfo);
+    await syncRuntimeConfig(tempDir, projectInfo);
     await runBunScript(tempDir, script);
 
     const buildDir = path.join(tempDir, "build");

@@ -1,5 +1,5 @@
 import type { BrowserView } from "electrobun/bun";
-import type { InjectionAssets } from "./config";
+import type { BukeConfig, InjectionAssets } from "./config";
 
 export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
   const rules = ["^*"];
@@ -85,4 +85,82 @@ export function applyInjectionAssets(webview: BrowserView, assets: InjectionAsse
   for (const script of assets.js) {
     webview.executeJavascript(`(() => { ${script}\n })();`);
   }
+}
+
+export function applySafeArea(webview: BrowserView, config: BukeConfig) {
+  const safeTop = getSafeTop(config);
+  if (safeTop === null) {
+    return false;
+  }
+
+  const css = buildSiteSafeAreaCss(config, safeTop);
+  if (!css) {
+    return false;
+  }
+
+  injectStyle(webview, "buke-safe-area-style", css);
+  return true;
+}
+
+function getSafeTop(config: BukeConfig) {
+  const safeArea = config.macosSafeArea;
+  if (!safeArea?.enabled || !config.window?.hideTitleBar || process.platform !== "darwin") {
+    return null;
+  }
+  return Math.max(0, safeArea.top ?? 0);
+}
+
+function buildSiteSafeAreaCss(config: BukeConfig, safeTop: number) {
+  const url = config.url?.trim();
+  if (!url) {
+    return "";
+  }
+
+  let hostname = "";
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    return "";
+  }
+
+  if (hostname !== "kimi.com" && hostname !== "www.kimi.com") {
+    return "";
+  }
+
+  const top = `${safeTop}px`;
+  return [
+    ":root {",
+    `  --buke-safe-top: ${top};`,
+    "}",
+    "html, body {",
+    "  overflow: hidden !important;",
+    "}",
+    ".home-page {",
+    "  box-sizing: border-box !important;",
+    "}",
+    ".home-page::before {",
+    "  content: '' !important;",
+    "  display: block !important;",
+    "  width: 100% !important;",
+    "  height: var(--buke-safe-top) !important;",
+    "  flex-shrink: 0 !important;",
+    "}",
+    ".home-top {",
+    "  min-height: max(0px, calc(100px - var(--buke-safe-top))) !important;",
+    "  height: max(0px, calc(((100dvh - 12px - 50px - 100px - var(--chat-input-height)) / 2) - var(--buke-safe-top))) !important;",
+    "}",
+  ].join("\\n");
+}
+
+function injectStyle(webview: BrowserView, styleId: string, css: string) {
+  webview.executeJavascript(`(() => {
+    const id = ${JSON.stringify(styleId)};
+    let style = document.getElementById(id);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = id;
+      (document.head || document.documentElement).appendChild(style);
+    }
+    style.textContent = ${JSON.stringify(css)};
+  })();`);
 }

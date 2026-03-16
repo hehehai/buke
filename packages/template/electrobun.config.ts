@@ -17,6 +17,15 @@ export default {
       sourcemap: "none"
     },
     useAsar: true,
+    asarUnpack: [
+      "*.node",
+      "*.dll",
+      "*.dylib",
+      "*.so",
+      "buke.config.json",
+      "inject/*.css",
+      "inject/*.js"
+    ],
     macos: {
       bundleCEF: false
     },

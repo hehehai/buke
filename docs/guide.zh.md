@@ -12,7 +12,7 @@ buke pack https://www.kimi.com --name Kimi --force
 buke pack --config ./buke.pack.json
 ```
 
-> Electrobun 版本固定在模板中，当前为 `1.15.1`。
+> Electrobun 版本固定在模板中，当前为 `1.16.0`。
 
 ## 配置文件结构
 

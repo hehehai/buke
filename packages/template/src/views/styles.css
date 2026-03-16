@@ -1,12 +1,8 @@
 :root {
   color-scheme: light dark;
   font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
-  background: transparent;
+  background: Canvas;
   color: #f4f6f8;
-  --buke-safe-top: __SAFE_AREA_TOP__px;
-  --buke-safe-left: __SAFE_AREA_LEFT__px;
-  --buke-safe-right: __SAFE_AREA_RIGHT__px;
-  --buke-safe-bottom: __SAFE_AREA_BOTTOM__px;
 }
 
 * {
@@ -18,7 +14,7 @@ body {
   width: 100%;
   height: 100%;
   margin: 0;
-  background: transparent;
+  background: Canvas;
 }
 
 body {
@@ -28,12 +24,16 @@ body {
 
 .webview {
   position: absolute;
-  top: var(--buke-safe-top);
-  left: var(--buke-safe-left);
-  right: var(--buke-safe-right);
-  bottom: var(--buke-safe-bottom);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: auto;
   height: auto;
   display: block;
   border: none;
+}
+
+.webview[data-safe-area-pending="true"] {
+  opacity: 0;
 }

@@ -2,7 +2,7 @@
 
 Buke CLI 用于把任意网页打包成 Electrobun 原生应用（Pake-like 体验），适合快速生成轻量桌面壳。
 
-> Electrobun 版本固定在模板中，当前为 `1.15.1`。
+> Electrobun 版本固定在模板中，当前为 `1.16.0`。
 
 ## 系统要求
 

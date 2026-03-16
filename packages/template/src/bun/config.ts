@@ -97,9 +97,12 @@ export function normalizePartition(value: string) {
 }
 
 export async function loadConfig() {
+  const packagedResourcesDir = path.resolve(path.dirname(process.execPath), "..", "Resources");
   const candidates = [
     path.resolve(process.cwd(), "buke.config.json"),
-    path.join(Utils.paths.userData, "buke.config.json")
+    path.join(Utils.paths.userData, "buke.config.json"),
+    path.join(packagedResourcesDir, "app.asar.unpacked", "buke.config.json"),
+    path.join(packagedResourcesDir, "app", "buke.config.json")
   ];
 
   for (const candidate of candidates) {

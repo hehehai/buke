@@ -11,6 +11,7 @@ import { ensureSettingsPath, readJson, saveSettings } from "./storage";
 import { buildMenu, handleMenuAction } from "./menu";
 import { setupTray } from "./tray";
 import {
+  applySafeArea,
   applyInjectionAssets,
   applyUserAgentOverride,
   applyZoom,
@@ -114,9 +115,11 @@ const applyNavigationRules = () => {
   }
 
   webview.on("dom-ready", () => {
+    applySafeArea(webview, bukeConfig);
     applyUserAgentOverride(webview, userAgentOverride);
     applyZoom(webview, zoomLevel);
     applyInjection(webview);
+    revealContentWebview();
   });
 };
 
@@ -150,6 +153,22 @@ const adjustZoom = (direction: "in" | "out" | "reset") => {
 
 const applyInjection = (webview: BrowserView) => {
   applyInjectionAssets(webview, injectionAssets);
+};
+
+const revealContentWebview = () => {
+  const win = getMainWindow();
+  if (!win) {
+    return;
+  }
+
+  win.webview.executeJavascript(`(() => {
+    const webview = document.querySelector("electrobun-webview[data-safe-area-pending='true']");
+    if (!(webview instanceof HTMLElement)) {
+      return;
+    }
+    webview.dataset.safeAreaPending = "false";
+    webview.style.opacity = "";
+  })();`);
 };
 
 const warnProxyUnsupported = () => {
@@ -190,11 +209,11 @@ const toggleDevTools = () => {
 };
 
 const applyWindowPreset = (preset: keyof typeof WINDOW_PRESETS) => {
-  const frame = WINDOW_PRESETS[preset];
   const win = getMainWindow();
   if (!win) {
     return;
   }
+  const frame = WINDOW_PRESETS[preset];
   win.setSize(frame.width, frame.height);
   win.focus();
 };
@@ -240,13 +259,16 @@ const hideMainWindow = () => {
 };
 
 const enforceMinSize = (win: BrowserWindow) => {
-  if (windowConfig.minWidth <= 0 && windowConfig.minHeight <= 0) {
+  const minWidth = windowConfig.minWidth;
+  const minHeight = windowConfig.minHeight;
+
+  if (minWidth <= 0 && minHeight <= 0) {
     return;
   }
 
   const { width, height } = win.getSize();
-  const nextWidth = Math.max(width, windowConfig.minWidth);
-  const nextHeight = Math.max(height, windowConfig.minHeight);
+  const nextWidth = Math.max(width, minWidth);
+  const nextHeight = Math.max(height, minHeight);
   if (nextWidth !== width || nextHeight !== height) {
     win.setSize(nextWidth, nextHeight);
   }
@@ -267,7 +289,7 @@ function createMainWindow() {
     },
     ...(isMacOS && windowConfig.hideTitleBar
       ? {
-          titleBarStyle: "hidden",
+          titleBarStyle: "hiddenInset",
           transparent: true,
         }
       : {}),
@@ -287,7 +309,9 @@ function createMainWindow() {
       win.minimize();
       return;
     }
-    Utils.quit();
+    if (!isMacOS) {
+      Utils.quit();
+    }
   });
 
   win.on("minimize", () => {
@@ -338,4 +362,8 @@ Electrobun.events.on("application-menu-clicked", (event) => {
   if (event.data.action) {
     handleMenuAction(event.data.action, menuHandlers);
   }
+});
+
+Electrobun.events.on("reopen", () => {
+  showMainWindow();
 });
