@@ -14,11 +14,14 @@ bun run dev
 - `buke.config.json` stores the original URL and metadata.
 - Window/tray/network options are stored in `buke.config.json`.
 - `inject/custom.css` / `inject/custom.js` can be listed in `buke.config.json` for CSS/JS injection.
-- macOS safe area padding defaults to `top=28` / `left=12` to avoid traffic light overlap.
+- macOS safe area padding defaults to `top=0` / `left=0` (can be overridden by project config or template flags).
   - Override via CLI: `--safe-top 32 --safe-left 14` or disable with `--safe-off`.
   - `--show-title-bar` toggles the native macOS title bar (default hidden).
   - `--user-agent` overrides `navigator.userAgent` in JS (network-level UA not guaranteed).
   - `--proxy-url` is stored for reference; use system proxy until Electrobun adds support.
+- `allowlist` controls popup and top-level navigation outside the base domain.
+  Built-in defaults already allow `http://localhost`, `https://localhost`, `http://127.0.0.1`, `https://127.0.0.1`, and `chrome-extension://*`.
+- OAuth-style third-party login popups are handled in an internal popup window when possible.
 
 Example:
 

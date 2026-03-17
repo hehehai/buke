@@ -59,6 +59,7 @@ export type PackConfigFile = {
   id?: string;
   url?: string;
   partition?: string;
+  allowlist?: string[];
   icon?: string;
   outDir?: string;
   env?: string;
@@ -78,6 +79,7 @@ export type ProjectInfo = {
   slug: string;
   appId: string;
   partition: string;
+  allowlist: string[];
   safeArea: SafeAreaConfig;
   window: WindowConfig;
   tray: TrayConfig;
@@ -110,6 +112,7 @@ export function deriveProjectInfo(
     slug,
     appId,
     partition,
+    allowlist: normalizeAllowlist(config?.allowlist),
     safeArea: deriveSafeArea(flags, config),
     window: deriveWindow(flags, config),
     tray: deriveTray(flags, config, configDir),
@@ -228,4 +231,29 @@ export function deriveNetwork(flags: Flags, config?: PackConfigFile): NetworkCon
 
 function toNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeAllowlist(entries: string[] | undefined) {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  const allowlist: string[] = [];
+  const seen = new Set<string>();
+
+  for (const entry of entries) {
+    if (typeof entry !== "string") {
+      continue;
+    }
+
+    const trimmed = entry.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+
+    seen.add(trimmed);
+    allowlist.push(trimmed);
+  }
+
+  return allowlist;
 }

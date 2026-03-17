@@ -127,6 +127,10 @@ export async function syncRuntimeConfig(
     runtimeConfig.partition = projectInfo.partition;
   }
 
+  if (projectInfo.allowlist.length > 0) {
+    runtimeConfig.allowlist = projectInfo.allowlist;
+  }
+
   const windowConfig: Record<string, unknown> = {};
   if (projectInfo.window.width !== 1200) {
     windowConfig.width = projectInfo.window.width;

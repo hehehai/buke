@@ -1,5 +1,5 @@
 import type { BrowserView } from "electrobun/bun";
-import type { BukeConfig, InjectionAssets } from "./config";
+import { type BukeConfig, DEFAULT_ALLOWLIST, type InjectionAssets } from "./config";
 
 export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
   const rules = ["^*"];
@@ -8,25 +8,15 @@ export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
       rules.push(rule);
     }
   };
-  const addHostRules = (protocol: string, host: string) => {
-    const safeProtocol = protocol === "https" ? "https" : protocol;
-    addRule(`${safeProtocol}://${host}/*`);
-    addRule(`${safeProtocol}://${host}:*/*`);
-    addRule(`${safeProtocol}://*.${host}/*`);
-    addRule(`${safeProtocol}://*.${host}:*/*`);
-  };
-
-  addHostRules(baseUrl.protocol.replace(":", ""), baseUrl.hostname);
-
-  for (const entry of allowlist) {
+  const addAllowlistEntry = (entry: string) => {
     const trimmed = entry.trim();
     if (!trimmed) {
-      continue;
+      return;
     }
 
     if (trimmed.includes("*") || trimmed.includes("/")) {
       addRule(trimmed);
-      continue;
+      return;
     }
 
     try {
@@ -37,6 +27,54 @@ export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
     } catch (error) {
       console.log(`Invalid allowlist entry: ${trimmed}`);
     }
+  };
+
+  const buildAliasHosts = (host: string) => {
+    const trimmed = host.trim().toLowerCase();
+    if (!trimmed || /^(\d{1,3}\.){3}\d{1,3}$/.test(trimmed)) {
+      return [trimmed];
+    }
+
+    const parts = trimmed.split(".");
+    if (parts.length <= 1) {
+      return [trimmed];
+    }
+
+    const aliasHosts = [];
+    for (let start = 0; start <= parts.length - 2; start += 1) {
+      aliasHosts.push(parts.slice(start).join("."));
+    }
+
+    const rootDomain = parts[parts.length - 2];
+    if (rootDomain) {
+      aliasHosts.push(`${rootDomain}.*`);
+    }
+
+    return aliasHosts;
+  };
+
+  const addHostRules = (protocol: string, host: string) => {
+    const safeProtocol = protocol === "https" ? "https" : protocol;
+    for (const aliasHost of buildAliasHosts(host)) {
+      addRule(`${safeProtocol}://${aliasHost}/*`);
+      addRule(`${safeProtocol}://${aliasHost}:*/*`);
+
+      if (aliasHost.includes("*")) {
+        continue;
+      }
+
+      addRule(`${safeProtocol}://*.${aliasHost}/*`);
+      addRule(`${safeProtocol}://*.${aliasHost}:*/*`);
+    }
+  };
+
+  addHostRules(baseUrl.protocol.replace(":", ""), baseUrl.hostname);
+  for (const entry of DEFAULT_ALLOWLIST) {
+    addAllowlistEntry(entry);
+  }
+
+  for (const entry of allowlist) {
+    addAllowlistEntry(entry);
   }
 
   addRule("about:*");
@@ -148,6 +186,35 @@ function buildSiteSafeAreaCss(config: BukeConfig, safeTop: number) {
     "  height: max(0px, calc(((100dvh - 12px - 50px - 100px - var(--chat-input-height)) / 2) - var(--buke-safe-top))) !important;",
     "}",
   ].join("\\n");
+}
+
+export function applySpaHistoryPatch(webview: BrowserView) {
+  webview.executeJavascript(`(() => {
+    if (window.__buke_spa_patched__) return;
+    window.__buke_spa_patched__ = true;
+
+    let lastUrl = location.href;
+
+    const notify = () => {
+      const url = location.href;
+      if (url === lastUrl) return;
+      lastUrl = url;
+      const title = document.title || "";
+      if (typeof window.__electrobunSendToHost === "function") {
+        window.__electrobunSendToHost({__buke_nav__: true, url, title});
+      }
+    };
+
+    const wrap = (original) => function(...args) {
+      const result = original.apply(this, args);
+      setTimeout(notify, 0);
+      return result;
+    };
+
+    history.pushState = wrap(history.pushState);
+    history.replaceState = wrap(history.replaceState);
+    window.addEventListener("popstate", () => setTimeout(notify, 0));
+  })();`);
 }
 
 function injectStyle(webview: BrowserView, styleId: string, css: string) {

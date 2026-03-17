@@ -7,10 +7,21 @@ import {
   normalizePartition,
   safeParseUrl,
 } from "./config";
-import { type AboutMenuConfig, type MenuLocaleConfig, buildMenu, handleMenuAction } from "./menu";
+import {
+  type AboutMenuConfig,
+  type MenuLocaleConfig,
+  type NavigationHistoryItem,
+  buildMenu,
+  handleMenuAction,
+} from "./menu";
 import { ensureSettingsPath, readJson, saveSettings } from "./storage";
 import { setupTray } from "./tray";
-import { applyUserAgentOverride, applyZoom, buildNavigationRules } from "./webview";
+import {
+  applySpaHistoryPatch,
+  applyUserAgentOverride,
+  applyZoom,
+  buildNavigationRules,
+} from "./webview";
 
 const isMacOS = process.platform === "darwin";
 const { config: bukeConfig, configDir } = await loadConfig();
@@ -46,6 +57,7 @@ const WINDOW_PRESETS = {
   wide: { width: 1500, height: 900 },
 } as const;
 
+const MAX_HISTORY_ENTRIES = 100;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
@@ -103,11 +115,185 @@ const session = Session.fromPartition(APP_PARTITION);
 let mainWindow: BrowserWindow | null = null;
 let contentWebview: BrowserView | null = null;
 let proxyWarningShown = false;
+let popupWindows: BrowserWindow[] = [];
+let navigationHistory: NavigationHistoryItem[] = [];
+
+const resolveHistoryTitle = (entryTitle: string, existing?: NavigationHistoryItem) => {
+  const trimmedTitle = entryTitle.trim();
+  if (trimmedTitle.length > 0) {
+    return trimmedTitle;
+  }
+  return existing?.title?.trim() ?? "";
+};
+
+const recordNavigationHistory = (rawUrl: string, title = "") => {
+  const parsed = safeParseUrl(rawUrl);
+  if (!parsed || !["http:", "https:"].includes(parsed.protocol)) {
+    return;
+  }
+
+  const entry = parsed.href;
+  if (!entry) {
+    return;
+  }
+
+  const existed = navigationHistory.find((item) => item.url === entry);
+  navigationHistory = navigationHistory.filter((item) => item.url !== entry);
+  navigationHistory.unshift({
+    url: entry,
+    title: resolveHistoryTitle(title, existed),
+  });
+  if (navigationHistory.length > MAX_HISTORY_ENTRIES) {
+    navigationHistory = navigationHistory.slice(0, MAX_HISTORY_ENTRIES);
+  }
+  refreshApplicationMenu();
+};
 
 const getMainWindow = () =>
   mainWindow && BrowserWindow.getById(mainWindow.id) ? mainWindow : null;
 
 const ensureMainWindow = () => getMainWindow() ?? createMainWindow();
+
+type WebviewEventWithPayload = {
+  detail?: unknown;
+  data?: unknown;
+};
+
+function extractEventUrl(payload: unknown): string | null {
+  if (typeof payload === "string") {
+    const parsed = safeParseEventPayload(payload);
+    if (parsed !== null) {
+      return extractEventUrl(parsed);
+    }
+
+    const trimmed = payload.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const data = payload as {
+    url?: unknown;
+    href?: unknown;
+    detail?: unknown;
+    data?: unknown;
+  };
+
+  if (typeof data.url === "string") {
+    const trimmed = data.url.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof data.href === "string") {
+    const trimmed = data.href.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (data.detail !== undefined) {
+    const nested: string | null = extractEventUrl(data.detail);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  if (data.data !== undefined) {
+    const nested: string | null = extractEventUrl(data.data);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+function safeParseEventPayload(payload: string): unknown | null {
+  const trimmed = payload.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return null;
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch (error) {
+    return null;
+  }
+}
+
+function extractNavigationAllowed(payload: unknown): boolean | null {
+  if (typeof payload === "string") {
+    const parsed = safeParseEventPayload(payload);
+    if (parsed !== null) {
+      return extractNavigationAllowed(parsed);
+    }
+    return null;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const data = payload as {
+    allowed?: unknown;
+    detail?: unknown;
+    data?: unknown;
+    [key: string]: unknown;
+  };
+
+  if (typeof data.allowed === "boolean") {
+    return data.allowed;
+  }
+
+  if (data.detail !== undefined) {
+    const nested: boolean | null = extractNavigationAllowed(data.detail);
+    if (nested !== null) {
+      return nested;
+    }
+  }
+
+  if (data.data !== undefined) {
+    const nested: boolean | null = extractNavigationAllowed(data.data);
+    if (nested !== null) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+function extractPopupUrl(event: WebviewEventWithPayload) {
+  const candidates = [event.detail, event.data];
+  for (const candidate of candidates) {
+    const url = extractUrl(candidate);
+    if (url) {
+      return url;
+    }
+  }
+  return null;
+}
+
+function extractUrl(payload: unknown) {
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const detail = payload as { url?: unknown; href?: unknown; detail?: unknown };
+  if (typeof detail.url === "string") {
+    const trimmed = detail.url.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof detail.href === "string") {
+    const trimmed = detail.href.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return extractUrl(detail.detail);
+}
 
 const resolveContentWebview = () => {
   if (contentWebview) {
@@ -130,6 +316,331 @@ const resolveContentWebview = () => {
   return contentWebview;
 };
 
+const isOAuthPopupUrl = (rawUrl: string) => {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (!host) {
+      return false;
+    }
+
+    if (
+      host === "accounts.google.com" ||
+      host.endsWith(".google.com") ||
+      host.includes("twitter.com") ||
+      host.includes("x.com")
+    ) {
+      return true;
+    }
+
+    return (
+      parsed.pathname.includes("/oauth") ||
+      parsed.search.includes("oauth=") ||
+      parsed.search.includes("client_id=") ||
+      parsed.pathname.includes("/signin") ||
+      parsed.pathname.includes("/login")
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
+const getHostFromUrl = (rawUrl: string) => {
+  try {
+    return safeParseUrl(rawUrl)?.hostname.toLowerCase() ?? "";
+  } catch {
+    return "";
+  }
+};
+
+const getDomainStem = (host: string) => {
+  const parts = host.toLowerCase().trim().split(".").filter(Boolean);
+  if (parts.length < 2) {
+    return "";
+  }
+
+  return parts[parts.length - 2];
+};
+
+const isFuzzyDomainMatch = (targetHost: string, allowlistHost: string) => {
+  const targetDomain = getDomainStem(targetHost);
+  const allowDomain = getDomainStem(allowlistHost);
+  if (!targetDomain || !allowDomain) {
+    return false;
+  }
+
+  return targetDomain === allowDomain;
+};
+
+const isAllowedPopupHost = (rawUrl: string) => {
+  const targetHost = getHostFromUrl(rawUrl);
+  if (!targetHost || !BASE_URL) {
+    return false;
+  }
+
+  if (targetHost === BASE_URL.hostname || targetHost.endsWith(`.${BASE_URL.hostname}`)) {
+    return true;
+  }
+
+  const allowlist = bukeConfig.allowlist ?? DEFAULT_CONFIG.allowlist;
+  for (const entry of allowlist) {
+    const trimmed = entry.trim().toLowerCase();
+    if (!trimmed) {
+      continue;
+    }
+
+    if (trimmed.includes("*") || trimmed.includes("/")) {
+      if (
+        trimmed.startsWith("*.") &&
+        (targetHost === trimmed.slice(2) || targetHost.endsWith(`.${trimmed.slice(2)}`))
+      ) {
+        return true;
+      }
+
+      const wildcardMatch = (() => {
+        const schemeIndex = trimmed.indexOf("://");
+        if (schemeIndex === -1) {
+          return null;
+        }
+
+        const hostPart = trimmed.slice(schemeIndex + 3).split("/")[0] ?? "";
+        if (!hostPart.startsWith("*.") || hostPart.length <= 2) {
+          return null;
+        }
+
+        const suffix = hostPart.slice(2).toLowerCase();
+        return suffix ? [suffix] : null;
+      })();
+      if (wildcardMatch?.[0]) {
+        const suffix = wildcardMatch[0];
+        if (targetHost === suffix || targetHost.endsWith(`.${suffix}`)) {
+          return true;
+        }
+      }
+
+      const parsed = safeParseUrl(trimmed);
+      if (parsed) {
+        const host = parsed.hostname.toLowerCase();
+        if (targetHost === host || targetHost.endsWith(`.${host}`)) {
+          return true;
+        }
+
+        if (isFuzzyDomainMatch(targetHost, host)) {
+          return true;
+        }
+      }
+      continue;
+    }
+
+    if (trimmed === targetHost || targetHost.endsWith(`.${trimmed}`)) {
+      return true;
+    }
+
+    if (isFuzzyDomainMatch(targetHost, trimmed)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const isSameDomainAsBase = (rawUrl: string) => {
+  const targetHost = getHostFromUrl(rawUrl);
+  if (!targetHost || !BASE_URL) {
+    return false;
+  }
+
+  return targetHost === BASE_URL.hostname || targetHost.endsWith(`.${BASE_URL.hostname}`);
+};
+
+const getActivePopupWindow = () =>
+  popupWindows.find((popup) => getPopupWindowById(popup.id) !== null);
+
+const getPopupWindowById = (id: number) => {
+  return BrowserWindow.getById(id) ?? null;
+};
+
+const applyPopupNavigationRules = (url: string) => {
+  const popupUrl = safeParseUrl(url);
+  if (!popupUrl) {
+    return ["^*"];
+  }
+
+  const allowlist = BASE_URL ? [BASE_URL.hostname] : [];
+  allowlist.push(popupUrl.hostname);
+  return buildNavigationRules(popupUrl, allowlist);
+};
+
+const openPopupWindow = (url: string) => {
+  const existing = getActivePopupWindow();
+  if (existing) {
+    existing.webview.executeJavascript(
+      `(() => { if (window.location && typeof window.location.assign === "function") { window.location.assign(${JSON.stringify(
+        url,
+      )}); } })();`,
+    );
+    existing.focus();
+    return;
+  }
+
+  const parent = getMainWindow();
+  const parentSize = parent?.getSize();
+  const width = 520;
+  const height = 760;
+  const x =
+    parent && parentSize ? Math.max(0, Math.floor((parentSize.width - width) / 2)) : undefined;
+  const y =
+    parent && parentSize ? Math.max(0, Math.floor((parentSize.height - height) / 2)) : undefined;
+
+  const popup = new BrowserWindow({
+    title: APP_NAME,
+    url,
+    frame: {
+      x,
+      y,
+      width,
+      height,
+    },
+  });
+
+  popup.webview.setNavigationRules(applyPopupNavigationRules(url));
+  popup.webview.on("new-window-open", (event) => {
+    const popupUrl = extractPopupUrl(event);
+    if (!popupUrl) {
+      return;
+    }
+    if (isOAuthPopupUrl(popupUrl)) {
+      popup.webview.executeJavascript(
+        `(() => { if (window.location && typeof window.location.assign === "function") { window.location.assign(${JSON.stringify(
+          popupUrl,
+        )}); } })();`,
+      );
+      return;
+    }
+    openInBrowser(popupUrl);
+    popup.close();
+  });
+
+  popup.webview.on("will-navigate", (event) => {
+    const blockedUrl = extractEventUrl(event) ?? "";
+    if (!blockedUrl) {
+      return;
+    }
+
+    const allowed = extractNavigationAllowed(event);
+    if (allowed === true) {
+      return;
+    }
+
+    if (isOAuthPopupUrl(blockedUrl)) {
+      return;
+    }
+    console.log(`Popup navigation blocked: ${blockedUrl}`);
+  });
+
+  popup.webview.on("dom-ready", () => {
+    applyZoom(popup.webview, zoomLevel);
+  });
+
+  popup.on("close", () => {
+    popupWindows = popupWindows.filter((item) => item.id !== popup.id);
+  });
+  popupWindows.push(popup);
+  popup.focus();
+};
+
+const navigateInMainWebview = (url: string) => {
+  const webview = resolveContentWebview();
+  if (!webview) {
+    return;
+  }
+  const target = url.trim();
+  if (!target) {
+    return;
+  }
+  webview.executeJavascript(
+    `(() => {
+      if (window.location && typeof window.location.assign === "function") {
+        window.location.assign(${JSON.stringify(target)});
+      }
+    })();`,
+  );
+};
+
+const goBackInMainWebview = () => {
+  const webview = resolveContentWebview();
+  if (!webview) {
+    return;
+  }
+
+  webview.executeJavascript(`(() => {
+    if (window.history && typeof window.history.back === "function") {
+      window.history.back();
+    }
+  })();`);
+};
+
+const goForwardInMainWebview = () => {
+  const webview = resolveContentWebview();
+  if (!webview) {
+    return;
+  }
+
+  webview.executeJavascript(`(() => {
+    if (window.history && typeof window.history.forward === "function") {
+      window.history.forward();
+    }
+  })();`);
+};
+
+const goHomeInMainWebview = () => {
+  if (!BASE_URL) {
+    return;
+  }
+  navigateInMainWebview(BASE_URL.href);
+};
+
+const handleNavigationHistoryEvent = (rawEvent: unknown, _webview: BrowserView | null) => {
+  if (rawEvent) {
+    const url = extractEventUrl(rawEvent);
+    if (!url || url.startsWith("about:blank")) {
+      return;
+    }
+    recordNavigationHistory(url);
+  }
+};
+
+const handleHostMessage = (event: unknown) => {
+  if (!event || typeof event !== "object") {
+    return;
+  }
+  const data = (event as { data?: unknown }).data;
+  if (!data || typeof data !== "object") {
+    return;
+  }
+  const detail = (data as { detail?: unknown }).detail;
+  const payload =
+    typeof detail === "string"
+      ? (() => {
+          try {
+            return JSON.parse(detail);
+          } catch {
+            return null;
+          }
+        })()
+      : detail && typeof detail === "object"
+        ? detail
+        : null;
+  if (!payload || typeof payload !== "object") {
+    return;
+  }
+  const nav = payload as { __buke_nav__?: boolean; url?: string; title?: string };
+  if (!nav.__buke_nav__ || typeof nav.url !== "string" || !nav.url) {
+    return;
+  }
+  recordNavigationHistory(nav.url, typeof nav.title === "string" ? nav.title : "");
+};
+
 const applyNavigationRules = () => {
   const webview = resolveContentWebview();
   if (!webview) {
@@ -141,14 +652,49 @@ const applyNavigationRules = () => {
       buildNavigationRules(BASE_URL, bukeConfig.allowlist ?? DEFAULT_CONFIG.allowlist),
     );
     webview.on("will-navigate", (event) => {
-      if (!event.data.allowed) {
-        console.log(`Navigation blocked: ${event.data.url}`);
+      const blockedUrl = extractEventUrl(event) ?? "unknown";
+      const allowed = extractNavigationAllowed(event);
+      if (allowed !== false) {
+        handleNavigationHistoryEvent(event, webview);
+        return;
       }
+      console.log(`Navigation blocked: ${blockedUrl}`);
+    });
+    webview.on("did-commit-navigation", (event) => {
+      handleNavigationHistoryEvent(event, webview);
+    });
+    webview.on("did-navigate", (event) => {
+      handleNavigationHistoryEvent(event, webview);
+    });
+    webview.on("did-navigate-in-page", (event) => {
+      handleNavigationHistoryEvent(event, webview);
+    });
+    webview.on("did-finish-load", (event) => {
+      handleNavigationHistoryEvent(event, webview);
+    });
+    webview.on("new-window-open", (event) => {
+      const url = extractPopupUrl(event);
+      if (!url) {
+        return;
+      }
+      if (isSameDomainAsBase(url)) {
+        navigateInMainWebview(url);
+        return;
+      }
+
+      if (isOAuthPopupUrl(url) || isAllowedPopupHost(url)) {
+        openPopupWindow(url);
+        return;
+      }
+      openInBrowser(url);
     });
   }
 
+  webview.on("host-message", handleHostMessage);
+
   webview.on("dom-ready", () => {
     applyUserAgentOverride(webview, userAgentOverride);
+    applySpaHistoryPatch(webview);
     applyZoom(webview, zoomLevel);
     revealContentWebview();
   });
@@ -273,8 +819,24 @@ const applyWindowPreset = (preset: keyof typeof WINDOW_PRESETS) => {
   win.focus();
 };
 
+const aboutMenu = buildAboutMenu(bukeConfig.about, APP_NAME, APP_URL);
+const refreshApplicationMenu = () => {
+  buildMenu(
+    APP_NAME,
+    isMacOS,
+    aboutMenu.length > 0,
+    aboutMenu,
+    navigationHistory,
+    APP_I18N_MENU,
+    APP_LOCALE,
+  );
+};
+
 const menuHandlers = {
   openUrl: openInBrowser,
+  goBack: goBackInMainWebview,
+  goForward: goForwardInMainWebview,
+  goHome: goHomeInMainWebview,
   reload: reloadContent,
   toggleDevTools,
   zoomIn: () => adjustZoom("in"),
@@ -284,6 +846,13 @@ const menuHandlers = {
   windowStandard: () => applyWindowPreset("standard"),
   windowWide: () => applyWindowPreset("wide"),
   clearData: () => void clearSiteData(),
+  openHistoryUrl: (url: string) => {
+    navigateInMainWebview(url);
+  },
+  clearHistory: () => {
+    navigationHistory = [];
+    refreshApplicationMenu();
+  },
   closeWindow: () => {
     const win = getMainWindow();
     if (!win) {
@@ -394,8 +963,10 @@ function createMainWindow() {
   return win;
 }
 
-const aboutMenu = buildAboutMenu(bukeConfig.about, APP_NAME, APP_URL);
-buildMenu(APP_NAME, isMacOS, aboutMenu.length > 0, aboutMenu, APP_I18N_MENU, APP_LOCALE);
+if (BASE_URL) {
+  recordNavigationHistory(BASE_URL.href);
+}
+refreshApplicationMenu();
 warnProxyUnsupported();
 setupTray(
   { enabled: trayConfig.enabled, icon: trayConfig.icon, appName: APP_NAME, configDir },

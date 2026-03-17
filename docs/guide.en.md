@@ -46,6 +46,10 @@ Use the JSON schema at `docs/buke.schema.json` for autocompletion and validation
 - `about`: Configure the About menu section.
 - `locale`: Preferred locale string (for example `"en"` or `"zh-CN"`). Used for HTML `lang` and menu label fallback context.
 - `i18n.menu`: Custom label overrides keyed by menu token (for example `"reload": "重新加载"`).
+- `allowlist`: Allowed hostnames or URL patterns outside the base host (for example `accounts.google.com`, `*.stripe.com`, `https://*.example.com/*`).
+- For multi-level hostnames, the domain chain is expanded automatically (for example `www.kimi.com` will also allow `kimi.com` and its wildcard subdomain scope), so subdomains like `*.kimi.com` are supported.
+- For non-subdomain base hosts, Buke also supports fuzzy matching across TLD variants, so `weibo.com` can match `weibo.cn`/`weibo.net`-type variants for the same brand/domain prefix.
+- The default allowlist already includes `http://localhost`, `https://localhost`, `http://127.0.0.1`, `https://127.0.0.1`, and `chrome-extension://*` to reduce false-blocking in local debugging and embedded integration cases.
 
 ### about
 
@@ -65,10 +69,12 @@ If you only set `locale`, menus will use built-in presets automatically (20+ loc
 
 Supported menu keys:
 
-- `view`, `window`, `about`
+- `operations`, `view`, `window`, `about`, `history`
+- `back`, `forward`, `home`, `refresh`
 - `reload`, `toggleDevTools`, `clearSiteData`, `closeWindow`, `quit`
 - `zoomIn`, `zoomOut`, `zoomReset`
 - `compact`, `standard`, `wide`
+- `clearHistory`
 
 All keys are optional. Missing keys fall back to English.
 
@@ -114,6 +120,27 @@ Built-in supported locales:
 
 - `userAgent`: Override User-Agent (JS side).
 - `proxyUrl`: Proxy URL (note: Electrobun does not support per-app proxy yet).
+
+### Navigation and popup (OAuth login)
+
+- By default, the main window only allows navigation to the base URL host and `allowlist` patterns; other top-level navigations are blocked in `will-navigate`.
+- For `window.open`, OAuth-related popups (for example Google/Twitter login flows) are first opened in an app window and the popup instance is reused to avoid multiple blank windows.
+- Non-auth popups still open in the system default browser.
+- If login popup still fails:
+  - Check whether it redirects to `accounts.google.com` or `*.twitter.com` (should use the in-app popup).
+  - Add those hosts to `allowlist` and restart the app.
+  - Keep `partition` stable to avoid login session reset.
+
+### What `allowlist` does
+
+- `allowlist` only affects cross-domain navigation policy in the main webview, and does not affect CSS/JS injection, window settings, or menu behavior.
+- The default allowlist already includes local development sources: `http://localhost`, `https://localhost`, `http://127.0.0.1`, `https://127.0.0.1`, and `chrome-extension://*`. Beyond those built-ins, if you do not add any extra rules, the main window still only allows the base host plus `about:`/`data:`.
+- Only URLs matching `allowlist` hosts/patterns are allowed through `setNavigationRules`; others are blocked and logged as `Navigation blocked` in `will-navigate`.
+- Popup windows get their own dynamic rules so OAuth redirect chains are less likely to be broken.
+- You can explicitly allow third-party login domains, e.g.:
+  - `"accounts.google.com"`
+  - `"twitter.com"`
+  - `"https://id.example.com/*"`
 
 ### inject
 
@@ -173,3 +200,56 @@ The CLI flag takes precedence.
 ## Example configs
 
 See `packages/examples` for minimal Pake-style configs.
+
+### Recommended allowlist snippet
+
+```json
+{
+  "allowlist": [
+    "accounts.google.com",
+    "twitter.com",
+    "x.com",
+    "https://id.example.com/*",
+    "https://oauth.example.com/*"
+  ]
+}
+```
+
+### Full sample config
+
+```json
+{
+  "name": "Kimi",
+  "url": "https://www.kimi.com",
+  "icon": "https://example.com/icon.png",
+  "window": {
+    "width": 1200,
+    "height": 780,
+    "minWidth": 960,
+    "minHeight": 640,
+    "hideTitleBar": true
+  },
+  "about": {
+    "enabled": true,
+    "items": [
+      { "label": "Website", "url": "https://www.kimi.com" },
+      { "separator": true },
+      { "label": "Privacy", "url": "https://www.kimi.com/privacy" }
+    ]
+  },
+  "allowlist": [
+    "accounts.google.com",
+    "twitter.com",
+    "x.com",
+    "https://id.kimi.com/*"
+  ],
+  "inject": {
+    "css": [
+      "inline: body { background: #fff !important; }"
+    ],
+    "js": [
+      "inline: document.body.classList.add('buke-managed');"
+    ]
+  }
+}
+```

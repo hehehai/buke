@@ -2,6 +2,9 @@ import { ApplicationMenu } from "electrobun/bun";
 
 export type MenuHandlers = {
   openUrl: (url: string) => void;
+  goBack: () => void;
+  goForward: () => void;
+  goHome: () => void;
   reload: () => void;
   toggleDevTools: () => void;
   zoomIn: () => void;
@@ -13,6 +16,8 @@ export type MenuHandlers = {
   clearData: () => void;
   closeWindow: () => void;
   quit: () => void;
+  openHistoryUrl: (url: string) => void;
+  clearHistory: () => void;
 };
 
 export type MenuLocaleConfig = {
@@ -32,11 +37,19 @@ export type AboutMenuSeparator = {
 export type AboutMenuConfig = Array<AboutMenuItem | AboutMenuSeparator>;
 
 const OPEN_URL_PREFIX = "open-url:";
+const OPEN_HISTORY_PREFIX = "open-history:";
 
 type BuiltinMenuLocale = {
+  operations: string;
   view: string;
   window: string;
   about: string;
+  back: string;
+  forward: string;
+  home: string;
+  refresh: string;
+  history: string;
+  clearHistory: string;
   reload: string;
   toggleDevTools: string;
   clearSiteData: string;
@@ -51,9 +64,16 @@ type BuiltinMenuLocale = {
 };
 
 const DEFAULT_MENU_I18N: BuiltinMenuLocale = {
+  operations: "Actions",
   view: "View",
   window: "Window",
   about: "About",
+  back: "Back",
+  forward: "Forward",
+  home: "Home",
+  refresh: "Refresh",
+  history: "History",
+  clearHistory: "Clear History",
   reload: "Reload",
   toggleDevTools: "Toggle DevTools",
   clearSiteData: "Clear Site Data",
@@ -67,11 +87,18 @@ const DEFAULT_MENU_I18N: BuiltinMenuLocale = {
   wide: "Wide",
 };
 
-const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
+const RAW_PRESET_MENU_I18N: Record<string, Partial<BuiltinMenuLocale>> = {
   en: DEFAULT_MENU_I18N,
   "en-us": DEFAULT_MENU_I18N,
   "en-gb": DEFAULT_MENU_I18N,
   "zh-cn": {
+    operations: "操作",
+    back: "返回",
+    forward: "前进",
+    home: "主页",
+    refresh: "刷新",
+    history: "历史",
+    clearHistory: "清空历史",
     view: "视图",
     window: "窗口",
     about: "关于",
@@ -88,6 +115,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "宽屏",
   },
   "zh-hans": {
+    operations: "操作",
+    back: "返回",
+    forward: "前进",
+    home: "主页",
+    refresh: "刷新",
+    history: "历史",
+    clearHistory: "清空历史",
     view: "视图",
     window: "窗口",
     about: "关于",
@@ -104,6 +138,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "宽屏",
   },
   "zh-hk": {
+    operations: "操作",
+    back: "返回",
+    forward: "前進",
+    home: "主頁",
+    refresh: "刷新",
+    history: "歷史",
+    clearHistory: "清除歷史",
     view: "檢視",
     window: "視窗",
     about: "關於",
@@ -120,6 +161,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "寬螢幕",
   },
   "zh-tw": {
+    operations: "操作",
+    back: "返回",
+    forward: "前進",
+    home: "首頁",
+    refresh: "重新整理",
+    history: "歷史紀錄",
+    clearHistory: "清除歷史紀錄",
     view: "檢視",
     window: "視窗",
     about: "關於",
@@ -136,6 +184,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "寬螢幕",
   },
   "zh-hant": {
+    operations: "操作",
+    back: "返回",
+    forward: "前進",
+    home: "首頁",
+    refresh: "重新整理",
+    history: "歷史紀錄",
+    clearHistory: "清除歷史紀錄",
     view: "檢視",
     window: "視窗",
     about: "關於",
@@ -152,6 +207,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "寬螢幕",
   },
   "zh-sg": {
+    operations: "操作",
+    back: "返回",
+    forward: "前进",
+    home: "主页",
+    refresh: "刷新",
+    history: "历史",
+    clearHistory: "清空历史",
     view: "视图",
     window: "窗口",
     about: "关于",
@@ -168,6 +230,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "宽屏",
   },
   "ja-jp": {
+    operations: "アクション",
+    back: "戻る",
+    forward: "進む",
+    home: "ホーム",
+    refresh: "更新",
+    history: "履歴",
+    clearHistory: "履歴を消去",
     view: "表示",
     window: "ウィンドウ",
     about: "情報",
@@ -184,6 +253,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "ワイド",
   },
   ja: {
+    operations: "アクション",
+    back: "戻る",
+    forward: "進む",
+    home: "ホーム",
+    refresh: "更新",
+    history: "履歴",
+    clearHistory: "履歴を消去",
     view: "表示",
     window: "ウィンドウ",
     about: "情報",
@@ -200,6 +276,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "ワイド",
   },
   "ko-kr": {
+    operations: "동작",
+    back: "뒤로",
+    forward: "앞으로",
+    home: "홈",
+    refresh: "새로고침",
+    history: "기록",
+    clearHistory: "기록 지우기",
     view: "보기",
     window: "창",
     about: "정보",
@@ -216,6 +299,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "넓게",
   },
   ko: {
+    operations: "동작",
+    back: "뒤로",
+    forward: "앞으로",
+    home: "홈",
+    refresh: "새로고침",
+    history: "기록",
+    clearHistory: "기록 지우기",
     view: "보기",
     window: "창",
     about: "정보",
@@ -232,6 +322,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "넓게",
   },
   "fr-fr": {
+    operations: "Actions",
+    back: "Retour",
+    forward: "Suivant",
+    home: "Accueil",
+    refresh: "Actualiser",
+    history: "Historique",
+    clearHistory: "Effacer l'historique",
     view: "Affichage",
     window: "Fenêtre",
     about: "À propos",
@@ -248,6 +345,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Large",
   },
   fr: {
+    operations: "Actions",
+    back: "Retour",
+    forward: "Suivant",
+    home: "Accueil",
+    refresh: "Actualiser",
+    history: "Historique",
+    clearHistory: "Effacer l'historique",
     view: "Affichage",
     window: "Fenêtre",
     about: "À propos",
@@ -264,6 +368,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Large",
   },
   "de-de": {
+    operations: "Aktionen",
+    back: "Zurück",
+    forward: "Weiter",
+    home: "Startseite",
+    refresh: "Aktualisieren",
+    history: "Verlauf",
+    clearHistory: "Verlauf löschen",
     view: "Ansicht",
     window: "Fenster",
     about: "Über",
@@ -280,6 +391,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Breit",
   },
   de: {
+    operations: "Aktionen",
+    back: "Zurück",
+    forward: "Weiter",
+    home: "Startseite",
+    refresh: "Aktualisieren",
+    history: "Verlauf",
+    clearHistory: "Verlauf löschen",
     view: "Ansicht",
     window: "Fenster",
     about: "Über",
@@ -296,6 +414,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Breit",
   },
   "es-es": {
+    operations: "Acciones",
+    back: "Atrás",
+    forward: "Adelante",
+    home: "Inicio",
+    refresh: "Actualizar",
+    history: "Historial",
+    clearHistory: "Borrar historial",
     view: "Vista",
     window: "Ventana",
     about: "Acerca de",
@@ -312,6 +437,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Ancho",
   },
   es: {
+    operations: "Acciones",
+    back: "Atrás",
+    forward: "Adelante",
+    home: "Inicio",
+    refresh: "Actualizar",
+    history: "Historial",
+    clearHistory: "Borrar historial",
     view: "Vista",
     window: "Ventana",
     about: "Acerca de",
@@ -328,6 +460,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Ancho",
   },
   "it-it": {
+    operations: "Azioni",
+    back: "Indietro",
+    forward: "Avanti",
+    home: "Home",
+    refresh: "Aggiorna",
+    history: "Cronologia",
+    clearHistory: "Cancella cronologia",
     view: "Visualizza",
     window: "Finestra",
     about: "Informazioni",
@@ -344,6 +483,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Ampio",
   },
   it: {
+    operations: "Azioni",
+    back: "Indietro",
+    forward: "Avanti",
+    home: "Home",
+    refresh: "Aggiorna",
+    history: "Cronologia",
+    clearHistory: "Cancella cronologia",
     view: "Visualizza",
     window: "Finestra",
     about: "Informazioni",
@@ -360,6 +506,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Ampio",
   },
   "pt-br": {
+    operations: "Ações",
+    back: "Voltar",
+    forward: "Avançar",
+    home: "Início",
+    refresh: "Atualizar",
+    history: "Histórico",
+    clearHistory: "Limpar histórico",
     view: "Visualizar",
     window: "Janela",
     about: "Sobre",
@@ -376,6 +529,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Amplo",
   },
   "pt-pt": {
+    operations: "Ações",
+    back: "Voltar",
+    forward: "Avançar",
+    home: "Início",
+    refresh: "Recarregar",
+    history: "Histórico",
+    clearHistory: "Limpar histórico",
     view: "Visualizar",
     window: "Janela",
     about: "Sobre",
@@ -392,6 +552,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Largo",
   },
   pt: {
+    operations: "Ações",
+    back: "Voltar",
+    forward: "Avançar",
+    home: "Início",
+    refresh: "Recarregar",
+    history: "Histórico",
+    clearHistory: "Limpar histórico",
     view: "Visualizar",
     window: "Janela",
     about: "Sobre",
@@ -408,6 +575,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Largo",
   },
   ru: {
+    operations: "Действия",
+    back: "Назад",
+    forward: "Вперед",
+    home: "Главная",
+    refresh: "Обновить",
+    history: "История",
+    clearHistory: "Очистить историю",
     view: "Вид",
     window: "Окно",
     about: "О приложении",
@@ -424,6 +598,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Широкий",
   },
   ar: {
+    operations: "إجراءات",
+    back: "عودة",
+    forward: "التالي",
+    home: "الرئيسية",
+    refresh: "تحديث",
+    history: "السجل",
+    clearHistory: "مسح السجل",
     view: "عرض",
     window: "نافذة",
     about: "حول",
@@ -440,6 +621,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "واسع",
   },
   tr: {
+    operations: "İşlemler",
+    back: "Geri",
+    forward: "İleri",
+    home: "Ana Sayfa",
+    refresh: "Yenile",
+    history: "Geçmiş",
+    clearHistory: "Geçmişi temizle",
     view: "Görünüm",
     window: "Pencere",
     about: "Hakkında",
@@ -456,6 +644,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Geniş",
   },
   vi: {
+    operations: "Tác vụ",
+    back: "Quay lại",
+    forward: "Tiến tới",
+    home: "Trang chủ",
+    refresh: "Làm mới",
+    history: "Lịch sử",
+    clearHistory: "Xóa lịch sử",
     view: "Xem",
     window: "Cửa sổ",
     about: "Giới thiệu",
@@ -472,6 +667,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Rộng",
   },
   id: {
+    operations: "Aksi",
+    back: "Kembali",
+    forward: "Maju",
+    home: "Beranda",
+    refresh: "Segarkan",
+    history: "Riwayat",
+    clearHistory: "Bersihkan riwayat",
     view: "Tampilan",
     window: "Jendela",
     about: "Tentang",
@@ -488,6 +690,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Lebar",
   },
   th: {
+    operations: "การดำเนินการ",
+    back: "ย้อนกลับ",
+    forward: "ไปข้างหน้า",
+    home: "หน้าแรก",
+    refresh: "โหลดใหม่",
+    history: "ประวัติ",
+    clearHistory: "ล้างประวัติ",
     view: "มุมมอง",
     window: "หน้าต่าง",
     about: "เกี่ยวกับ",
@@ -504,6 +713,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "กว้าง",
   },
   nl: {
+    operations: "Acties",
+    back: "Terug",
+    forward: "Verder",
+    home: "Startpagina",
+    refresh: "Vernieuwen",
+    history: "Geschiedenis",
+    clearHistory: "Geschiedenis wissen",
     view: "Weergave",
     window: "Venster",
     about: "Over",
@@ -520,6 +736,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Breed",
   },
   sv: {
+    operations: "Åtgärder",
+    back: "Tillbaka",
+    forward: "Framåt",
+    home: "Hem",
+    refresh: "Uppdatera",
+    history: "Historik",
+    clearHistory: "Rensa historik",
     view: "Vy",
     window: "Fönster",
     about: "Om",
@@ -536,6 +759,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Bred",
   },
   no: {
+    operations: "Handlinger",
+    back: "Tilbake",
+    forward: "Fremover",
+    home: "Hjem",
+    refresh: "Oppdater",
+    history: "Historikk",
+    clearHistory: "Tøm historikk",
     view: "Visning",
     window: "Vindu",
     about: "Om",
@@ -552,6 +782,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Bred",
   },
   da: {
+    operations: "Handlinger",
+    back: "Tilbage",
+    forward: "Frem",
+    home: "Hjem",
+    refresh: "Opdater",
+    history: "Historik",
+    clearHistory: "Ryd historik",
     view: "Visning",
     window: "Vindue",
     about: "Om",
@@ -568,6 +805,13 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     wide: "Bred",
   },
   fi: {
+    operations: "Toiminnot",
+    back: "Takaisin",
+    forward: "Eteenpäin",
+    home: "Etusivu",
+    refresh: "Lataa uudelleen",
+    history: "Historia",
+    clearHistory: "Tyhjennä historia",
     view: "Näytä",
     window: "Ikkuna",
     about: "Tietoja",
@@ -583,6 +827,32 @@ const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = {
     standard: "Vakio",
     wide: "Leveä",
   },
+};
+
+export type NavigationHistoryItem = {
+  url: string;
+  title: string;
+};
+
+const PRESET_MENU_I18N: Record<string, BuiltinMenuLocale> = (() => {
+  const normalized: Record<string, BuiltinMenuLocale> = {};
+  for (const [key, value] of Object.entries(RAW_PRESET_MENU_I18N)) {
+    normalized[key] = {
+      ...DEFAULT_MENU_I18N,
+      ...value,
+    };
+  }
+  return normalized;
+})();
+
+const MAX_HISTORY_LABEL_LENGTH = 60;
+
+const truncateHistoryLabel = (value: string) => {
+  const normalized = value.trim();
+  if (normalized.length <= MAX_HISTORY_LABEL_LENGTH) {
+    return normalized;
+  }
+  return `${normalized.slice(0, MAX_HISTORY_LABEL_LENGTH - 1)}…`;
 };
 
 const normalizeLocale = (value?: string) => value?.trim().toLowerCase().replace(/_/g, "-") ?? "";
@@ -617,10 +887,15 @@ export function buildMenu(
   isMacOS: boolean,
   showAboutMenu: boolean,
   aboutItems: AboutMenuConfig,
+  historyItems: NavigationHistoryItem[],
   menuLocale: MenuLocaleConfig = {},
   appLocale?: string,
 ) {
   const localized = resolveMenuLocale(menuLocale, appLocale);
+  const historySubmenu = historyItems.map((entry) => ({
+    label: truncateHistoryLabel(entry.title?.trim() || entry.url?.trim()),
+    action: `${OPEN_HISTORY_PREFIX}${encodeURIComponent(entry.url)}`,
+  }));
 
   ApplicationMenu.setApplicationMenu([
     {
@@ -649,6 +924,25 @@ export function buildMenu(
         { label: localized.zoomIn, action: "zoom-in", accelerator: "+" },
         { label: localized.zoomOut, action: "zoom-out", accelerator: "-" },
         { label: localized.zoomReset, action: "zoom-reset", accelerator: "0" },
+      ],
+    },
+    {
+      label: localized.operations,
+      submenu: [
+        { label: localized.back, action: "go-back", accelerator: "[" },
+        { label: localized.forward, action: "go-forward", accelerator: "]" },
+        { label: localized.home, action: "go-home" },
+        { label: localized.refresh, action: "reload" },
+        { type: "separator" as const },
+        {
+          label: localized.history,
+          submenu: [
+            { label: localized.clearHistory, action: "clear-history" },
+            ...(historySubmenu.length > 0
+              ? [{ type: "separator" as const }, ...historySubmenu]
+              : []),
+          ],
+        },
       ],
     },
     {
@@ -688,6 +982,16 @@ export function buildMenu(
 }
 
 export function handleMenuAction(action: string, handlers: MenuHandlers) {
+  if (action.startsWith(OPEN_HISTORY_PREFIX)) {
+    const raw = action.slice(OPEN_HISTORY_PREFIX.length);
+    try {
+      handlers.openHistoryUrl(decodeURIComponent(raw));
+    } catch {
+      handlers.openHistoryUrl(raw);
+    }
+    return;
+  }
+
   if (action.startsWith(OPEN_URL_PREFIX)) {
     const raw = action.slice(OPEN_URL_PREFIX.length);
     try {
@@ -704,6 +1008,15 @@ export function handleMenuAction(action: string, handlers: MenuHandlers) {
       return;
     case "toggle-devtools":
       handlers.toggleDevTools();
+      return;
+    case "go-back":
+      handlers.goBack();
+      return;
+    case "go-forward":
+      handlers.goForward();
+      return;
+    case "go-home":
+      handlers.goHome();
       return;
     case "zoom-in":
       handlers.zoomIn();
@@ -731,6 +1044,9 @@ export function handleMenuAction(action: string, handlers: MenuHandlers) {
       return;
     case "quit-app":
       handlers.quit();
+      return;
+    case "clear-history":
+      handlers.clearHistory();
       return;
     default:
       return;

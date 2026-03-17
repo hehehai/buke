@@ -29,6 +29,11 @@
       "type": "string",
       "description": "Webview session partition (e.g. persist:default)."
     },
+    "allowlist": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional allowed hostnames or URL patterns for cross-domain navigation. Built-in defaults already include localhost, 127.0.0.1, and chrome-extension origins."
+    },
     "icon": {
       "type": "string",
       "description": "App icon path or URL."

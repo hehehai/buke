@@ -64,6 +64,14 @@ export type Settings = {
   zoomLevel?: number;
 };
 
+export const DEFAULT_ALLOWLIST = [
+  "http://localhost",
+  "https://localhost",
+  "http://127.0.0.1",
+  "https://127.0.0.1",
+  "chrome-extension://*",
+] as const;
+
 export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "allowlist">> & {
   inject: Required<NonNullable<BukeConfig["inject"]>>;
   macosSafeArea: Required<NonNullable<BukeConfig["macosSafeArea"]>>;
@@ -75,7 +83,7 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
 } = {
   partition: "persist:default",
   zoom: 1,
-  allowlist: [],
+  allowlist: [...DEFAULT_ALLOWLIST],
   inject: { css: [], js: [] },
   window: {
     width: 1200,
@@ -148,6 +156,7 @@ export function normalizeConfig(config: BukeConfig): BukeConfig {
   return {
     ...DEFAULT_CONFIG,
     ...config,
+    allowlist: mergeAllowlist(DEFAULT_CONFIG.allowlist, config.allowlist),
     window: {
       ...DEFAULT_CONFIG.window,
       ...(config.window ?? {}),
@@ -182,6 +191,33 @@ export function normalizeConfig(config: BukeConfig): BukeConfig {
       },
     },
   };
+}
+
+function mergeAllowlist(...lists: (string[] | undefined)[]) {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+
+  for (const list of lists) {
+    if (!Array.isArray(list)) {
+      continue;
+    }
+
+    for (const entry of list) {
+      if (typeof entry !== "string") {
+        continue;
+      }
+
+      const trimmed = entry.trim();
+      if (!trimmed || seen.has(trimmed)) {
+        continue;
+      }
+
+      seen.add(trimmed);
+      merged.push(trimmed);
+    }
+  }
+
+  return merged;
 }
 
 export async function loadInjectionAssets(inject: BukeConfig["inject"], dir: string) {
