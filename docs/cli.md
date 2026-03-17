@@ -19,7 +19,7 @@ curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.s
 也可以指定版本：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh -s -- v0.2.1
+curl -fsSL https://raw.githubusercontent.com/hehehai/buke/main/scripts/install.sh | sh -s -- v0.2.2
 ```
 
 ### 3. npm
@@ -123,8 +123,8 @@ buke doctor [--fix]
 发布入口固定为：
 
 ```bash
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 ## 说明

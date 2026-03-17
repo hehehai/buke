@@ -273,7 +273,7 @@ Electrobun 会按 **当前系统平台** 打包：
 - Windows：在 Windows 环境运行 `buke pack`
 - Linux：在 Linux 环境运行 `buke pack`
 
-可在 CI 中分别执行。本仓库的 release workflow 现在会在 `macos-latest`、`macos-13`、`ubuntu-latest` 和 `windows-latest` 上分别打包，并且只发布整理后的归档文件，例如 `excalidraw-stable-macos-arm64.tar.zst`，不再直接暴露 Electrobun 的内部文件。
+可在 CI 中分别执行。本仓库的 release workflow 现在会在 `macos-latest`、`macos-15-intel`、`ubuntu-latest` 和 `windows-latest` 上分别打包，并且只发布整理后的归档文件，例如 `excalidraw-stable-macos-arm64.tar.zst`，不再直接暴露 Electrobun 的内部文件。
 
 ## CLI 参数覆盖规则
 
