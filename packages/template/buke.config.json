@@ -3,5 +3,5 @@
   "url": "__APP_URL__",
   "createdAt": "__CREATED_AT__",
   "id": "__APP_ID__",
-  "templateVersion": "0.2.2"
+  "templateVersion": "0.2.3"
 }

@@ -69,8 +69,8 @@ bun run dev:template:kimi
 Releases are driven by Git tags:
 
 ```bash
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.2.3
+git push origin v0.2.3
 ```
 
 The release workflow publishes:

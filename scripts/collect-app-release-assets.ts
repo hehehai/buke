@@ -82,7 +82,9 @@ async function main() {
   const releasePrefix = `${normalizedAppName}-${normalizedChannel}-${platform}`;
 
   const allFiles = await walkFiles(path.resolve(inputDir));
-  const releaseableFiles = allFiles.filter((filePath) => hasReleaseableExtension(path.basename(filePath)));
+  const releaseableFiles = allFiles.filter((filePath) =>
+    hasReleaseableExtension(path.basename(filePath)),
+  );
 
   if (releaseableFiles.length === 0) {
     throw new Error(`No releaseable assets found in ${inputDir}`);
