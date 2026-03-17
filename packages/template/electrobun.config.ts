@@ -8,7 +8,7 @@ export default {
   app: {
     name: "__APP_NAME__",
     identifier: "__APP_ID__",
-    version: "0.2.3",
+    version: "0.2.4",
   },
   build: {
     bun: {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { existsSync } from "node:fs";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs, printHelp } from "./args";
@@ -210,6 +210,7 @@ async function handlePack(flags: Record<string, string | boolean>, positionals: 
     await runBunScript(tempDir, script);
 
     const buildDir = path.join(tempDir, "build");
+    const artifactDir = path.join(tempDir, "artifacts");
     if (!existsSync(buildDir)) {
       console.error("Build directory not found. Build may have failed.");
       process.exit(1);
@@ -217,6 +218,18 @@ async function handlePack(flags: Record<string, string | boolean>, positionals: 
 
     await prepareOutDir(outDir, force);
     await cp(buildDir, outDir, { recursive: true });
+    if (existsSync(artifactDir)) {
+      const artifactOutDir = path.join(outDir, "artifacts");
+      await mkdir(artifactOutDir, { recursive: true });
+      const artifactEntries = await readdir(artifactDir);
+      await Promise.all(
+        artifactEntries.map((entry) =>
+          cp(path.join(artifactDir, entry), path.join(artifactOutDir, entry), {
+            recursive: true,
+          }),
+        ),
+      );
+    }
     succeeded = true;
 
     console.log(`\n✔ App packaged at: ${outDir}\n`);

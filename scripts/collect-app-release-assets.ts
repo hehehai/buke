@@ -15,6 +15,12 @@ const RELEASEABLE_EXTENSIONS = [
   ".rpm",
 ] as const;
 
+const PLATFORM_EXTENSION_PREFERENCE = {
+  macos: [".dmg"],
+  windows: [".zip", ".msi", ".exe"],
+  linux: [".tar.gz", ".AppImage", ".deb", ".rpm"],
+} as const;
+
 function parseFlag(argv: string[], name: string) {
   const index = argv.indexOf(name);
   if (index === -1) {
@@ -43,6 +49,20 @@ function getReleaseableExtension(fileName: string) {
   }
 
   return extension;
+}
+
+function getPreferredExtensions(platform: string) {
+  if (platform.startsWith("macos")) {
+    return PLATFORM_EXTENSION_PREFERENCE.macos;
+  }
+  if (platform.startsWith("windows")) {
+    return PLATFORM_EXTENSION_PREFERENCE.windows;
+  }
+  if (platform.startsWith("linux")) {
+    return PLATFORM_EXTENSION_PREFERENCE.linux;
+  }
+
+  throw new Error(`Unsupported release platform: ${platform}`);
 }
 
 async function walkFiles(rootDir: string): Promise<string[]> {
@@ -90,10 +110,21 @@ async function main() {
     throw new Error(`No releaseable assets found in ${inputDir}`);
   }
 
+  const preferredExtensions = getPreferredExtensions(platform);
+  const selectedFiles = preferredExtensions.flatMap((extension) =>
+    releaseableFiles.filter((filePath) => path.basename(filePath).endsWith(extension)),
+  );
+
+  if (selectedFiles.length === 0) {
+    throw new Error(
+      `No user-facing release assets found in ${inputDir} for ${platform}. Expected one of: ${preferredExtensions.join(", ")}`,
+    );
+  }
+
   await mkdir(path.resolve(outputDir), { recursive: true });
 
   const usedNames = new Set<string>();
-  for (const filePath of releaseableFiles) {
+  for (const filePath of selectedFiles) {
     const sourceStat = await stat(filePath);
     if (!sourceStat.isFile()) {
       continue;

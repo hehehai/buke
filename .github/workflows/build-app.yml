@@ -84,7 +84,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           bun run scripts/collect-app-release-assets.ts \
-            --input-dir "output/${{ inputs.name }}" \
+            --input-dir "output/${{ inputs.name }}/artifacts" \
             --output-dir "release/${{ inputs.name }}-${{ matrix.platform }}" \
             --app-name "${{ inputs.name }}" \
             --platform "${{ matrix.platform }}" \
@@ -93,7 +93,7 @@ jobs:
       - name: Collect release assets (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: bun run scripts/collect-app-release-assets.ts --input-dir "output/${{ inputs.name }}" --output-dir "release/${{ inputs.name }}-${{ matrix.platform }}" --app-name "${{ inputs.name }}" --platform "${{ matrix.platform }}" --channel "${{ inputs.env || 'dev' }}"
+        run: bun run scripts/collect-app-release-assets.ts --input-dir "output/${{ inputs.name }}/artifacts" --output-dir "release/${{ inputs.name }}-${{ matrix.platform }}" --app-name "${{ inputs.name }}" --platform "${{ matrix.platform }}" --channel "${{ inputs.env || 'dev' }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -1,6 +1,6 @@
 {
   "name": "@hehehai/buke",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Pake-like Electrobun CLI for wrapping websites into lightweight desktop apps",
   "license": "Apache-2.0",
   "type": "module",
