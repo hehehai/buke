@@ -69,12 +69,12 @@ buke pack --config ./buke.pack.json
 
 支持的菜单键：
 
-- `operations`、`view`、`window`、`about`、`history`
+- `operations`、`view`、`window`、`about`、`edit`、`history`
 - `back`、`forward`、`home`、`refresh`
-- `reload`、`toggleDevTools`、`clearSiteData`、`closeWindow`、`quit`
+- `reload`、`toggleDevTools`、`clearSiteData`、`clearCacheRestart`、`closeWindow`、`quit`
 - `zoomIn`、`zoomOut`、`zoomReset`
 - `compact`、`standard`、`wide`
-- `clearHistory`
+- `clearHistory`、`copyUrl`、`alwaysOnTop`、`newWindow`、`pasteMatchStyle`
 
 以上字段均为可选，未设置时自动回退到英文。
 
@@ -109,6 +109,8 @@ buke pack --config ./buke.pack.json
 - `hideTitleBar`：是否隐藏 macOS 标题栏，默认 `false`。
 - `fullscreen`：是否全屏启动，默认 `false`。
 - `maximized`：是否最大化启动，默认 `false`。
+- `alwaysOnTop`：窗口始终置顶，默认 `false`。
+- `title`：自定义窗口标题，默认使用应用名称。
 
 ### tray
 
@@ -120,6 +122,90 @@ buke pack --config ./buke.pack.json
 
 - `userAgent`：覆盖 User-Agent（JS 侧）。
 - `proxyUrl`：代理 URL（注意：Electrobun 暂不支持应用级代理）。
+
+### navigation（导航控制）
+
+- `forceInternalNavigation`：将所有导航（包括弹窗）重定向到主 WebView，默认 `false`。
+- `internalUrlRegex`：匹配的 URL 保留在应用内，其他按弹窗规则处理。
+- `disabledWebShortcuts`：屏蔽网页上的 `Ctrl/Cmd+快捷键`，默认 `false`。标准剪贴板快捷键（Ctrl/Cmd+A/C/V/X/Z）保留。
+- `newWindow`：允许弹窗窗口用于 OAuth 登录等，默认 `false`。
+
+### instance（实例管理）
+
+- `multiInstance`：允许同时运行多个应用实例，默认 `false`（默认单实例模式，使用文件锁）。
+- `activationShortcut`：全局快捷键切换窗口显示/隐藏（例如 `"CmdOrControl+Shift+P"`）。
+
+### runtime（运行时行为）
+
+- `darkMode`：强制 WebView 使用深色模式，默认 `false`。
+- `startToTray`：启动时隐藏到托盘，需要 `tray.enabled: true`，默认 `false`。
+- `debug`：启用详细日志并自动打开 DevTools，默认 `false`。
+- `incognito`：使用非持久化会话（重启后不保留 Cookie/存储），默认 `false`。
+- `enableDragDrop`：启用文件拖放支持，默认 `false`。
+- `pastePlainText`：强制粘贴为纯文本（去除格式），默认 `false`。
+- `ignoreCertificateErrors`：忽略 TLS 证书错误（谨慎使用），默认 `false`。
+- `wasm`：启用 WebAssembly CORS 隔离头，默认 `false`。
+- `camera`：请求摄像头权限（macOS 签名），默认 `false`。
+- `microphone`：请求麦克风权限（macOS 签名），默认 `false`。
+- `multiWindow`：启用多窗口支持，默认 `false`。
+
+### build（构建与分发）
+
+- `appVersion`：应用版本号（注入到 `electrobun.config.ts`）。
+- `install`：构建后安装到 `/Applications`（macOS），默认 `false`。
+- `iterativeBuild`：跳过 DMG/安装器，仅生成应用包，默认 `false`。
+
+### zoom
+
+- `zoom`：WebView 缩放级别。支持 `0.5`-`2.0`（小数）或 `50`-`200`（百分比，自动除以 100）。设置后持久保存。
+
+### 应用预设
+
+可以使用预设名称代替 URL 来打包热门应用：
+
+```bash
+buke pack deepseek       # → https://chat.deepseek.com/
+buke pack chatgpt        # → https://chatgpt.com/
+buke pack youtube        # → https://www.youtube.com/
+buke pack github         # → https://github.com/
+buke pack twitter        # → https://x.com/
+```
+
+可用预设：`chatgpt`、`claude`、`deepseek`、`discord`、`excalidraw`、`figma`、`github`、`google-maps`、`google-translate`、`hacker-news`、`kimi`、`notion`、`poe`、`reddit`、`spotify`、`twitter`、`whatsapp`、`x`、`youtube`。
+
+### 本地文件打包
+
+可以打包本地 HTML 文件：
+
+```bash
+buke pack https://localhost --use-local-file ./index.html
+```
+
+### 内置运行时特性
+
+以下功能在每个 Buke 应用中自动生效：
+
+- **键盘快捷键**（未设置 `disabledWebShortcuts` 时）：`Cmd/Ctrl+[` 后退、`Cmd/Ctrl+]` 前进、`Cmd/Ctrl+R` 刷新、`Cmd/Ctrl+↑` 滚到顶部、`Cmd/Ctrl+↓` 滚到底部、`Cmd/Ctrl+-/+/0` 缩放。
+- **下载检测**：点击可下载文件（65+ 种类型：PDF、ZIP、EXE 等）时自动拦截并保存到 `~/Downloads`，同时显示页内 toast 和系统通知。
+- **右键菜单增强**：右键点击图片/视频/链接时显示自定义菜单，包含"下载"、"复制地址"、"在浏览器中打开"选项。自动适配深色/浅色主题。
+- **全屏 polyfill**：HTML5 Fullscreen API（`requestFullscreen`）桥接到原生窗口全屏。支持 YouTube、Bilibili 等视频站点。Escape 退出全屏。
+- **Toast 通知**：页面内底部右侧浮动通知，用于下载状态等事件，3 秒后自动消失。
+- **Notification API 覆写**：网页 `Notification` 调用转发为系统原生通知。
+- **主题检测**：MutationObserver 监听页面主题变化（`.dark` class、`data-theme` 属性、`color-scheme` 样式）并同步系统偏好。
+- **中文输入法修复**：阻止 Safari WebView 中 `Process` 键事件传播问题。
+- **SPA 路由追踪**：补丁 `history.pushState/replaceState` 以检测客户端导航，更新历史菜单。
+- **窗口状态记忆**：窗口尺寸变化时保存到 `settings.json`，下次启动时恢复。
+
+### 菜单
+
+应用菜单包含：
+
+- **应用菜单**：新建窗口（启用 `multiWindow` 时）、重新加载、切换 DevTools、清除站点数据、清除缓存并重启、关闭窗口、退出。
+- **编辑菜单**（macOS）：撤销、重做、剪切、复制、粘贴、全选、复制网址（`Cmd+L`）。
+- **视图菜单**：放大/缩小/重置、全屏切换（macOS）。
+- **操作菜单**：后退、前进、主页、刷新、历史记录子菜单（最近 100 个访问页面）。
+- **窗口菜单**：窗口置顶切换（带 ✓ 标记）、紧凑/标准/宽屏预设。
+- **关于菜单**：通过 `about.items` 配置的自定义链接。
 
 ### 导航与弹窗（OAuth 登录）
 
@@ -224,12 +310,36 @@ buke pack --config ./buke.pack.json --safe-top 12
   "name": "Kimi",
   "url": "https://www.kimi.com",
   "icon": "https://example.com/icon.png",
+  "zoom": 100,
   "window": {
     "width": 1200,
     "height": 780,
     "minWidth": 960,
     "minHeight": 640,
-    "hideTitleBar": true
+    "hideTitleBar": true,
+    "alwaysOnTop": false,
+    "title": "Kimi AI"
+  },
+  "navigation": {
+    "forceInternalNavigation": false,
+    "internalUrlRegex": ".*\\.kimi\\.com",
+    "disabledWebShortcuts": false,
+    "newWindow": true
+  },
+  "instance": {
+    "multiInstance": false,
+    "activationShortcut": "CmdOrControl+Shift+K"
+  },
+  "runtime": {
+    "darkMode": false,
+    "debug": false,
+    "incognito": false,
+    "enableDragDrop": false,
+    "pastePlainText": false,
+    "multiWindow": false
+  },
+  "build": {
+    "appVersion": "1.0.0"
   },
   "about": {
     "enabled": true,

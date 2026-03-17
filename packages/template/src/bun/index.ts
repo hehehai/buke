@@ -1,8 +1,17 @@
-import Electrobun, { BrowserView, BrowserWindow, Session, Utils } from "electrobun/bun";
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import Electrobun, {
+  BrowserView,
+  BrowserWindow,
+  GlobalShortcut,
+  Session,
+  Utils,
+} from "electrobun/bun";
 import {
   type BukeConfig,
   DEFAULT_CONFIG,
   type Settings,
+  type WindowState,
   loadConfig,
   normalizePartition,
   safeParseUrl,
@@ -10,6 +19,7 @@ import {
 import {
   type AboutMenuConfig,
   type MenuLocaleConfig,
+  type MenuOptions,
   type NavigationHistoryItem,
   buildMenu,
   handleMenuAction,
@@ -17,8 +27,21 @@ import {
 import { ensureSettingsPath, readJson, saveSettings } from "./storage";
 import { setupTray } from "./tray";
 import {
+  applyBuiltinShortcuts,
+  applyChineseIMEFix,
+  applyContextMenu,
+  applyDarkMode,
+  applyDisabledWebShortcuts,
+  applyDownloadDetection,
+  applyDragDrop,
+  applyFullscreenPolyfill,
+  applyNotificationOverride,
+  applyPastePlainText,
   applySpaHistoryPatch,
+  applyThemeDetection,
+  applyToast,
   applyUserAgentOverride,
+  applyWasmHeaders,
   applyZoom,
   buildNavigationRules,
 } from "./webview";
@@ -48,8 +71,21 @@ const networkConfig = {
   ...DEFAULT_CONFIG.network,
   ...(bukeConfig.network ?? {}),
 };
+const navigationConfig = {
+  ...DEFAULT_CONFIG.navigation,
+  ...(bukeConfig.navigation ?? {}),
+};
+const instanceConfig = {
+  ...DEFAULT_CONFIG.instance,
+  ...(bukeConfig.instance ?? {}),
+};
+const runtimeConfig = {
+  ...DEFAULT_CONFIG.runtime,
+  ...(bukeConfig.runtime ?? {}),
+};
 const userAgentOverride = networkConfig.userAgent?.trim() ?? "";
 const proxyUrl = networkConfig.proxyUrl?.trim() ?? "";
+const DEBUG = runtimeConfig.debug;
 
 const WINDOW_PRESETS = {
   compact: { width: 960, height: 640 },
@@ -61,6 +97,48 @@ const MAX_HISTORY_ENTRIES = 100;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
+
+// Single-instance lock
+const acquireInstanceLock = (): boolean => {
+  if (instanceConfig.multiInstance) {
+    return true;
+  }
+  const lockFile = path.join(Utils.paths.userData, ".instance-lock");
+  try {
+    if (existsSync(lockFile)) {
+      const pid = Number.parseInt(readFileSync(lockFile, "utf8").trim(), 10);
+      try {
+        process.kill(pid, 0);
+        return false;
+      } catch {
+        unlinkSync(lockFile);
+      }
+    }
+    writeFileSync(lockFile, String(process.pid), "utf8");
+    process.on("exit", () => {
+      try {
+        unlinkSync(lockFile);
+      } catch {}
+    });
+    return true;
+  } catch {
+    return true;
+  }
+};
+
+const instanceLockAcquired = acquireInstanceLock();
+if (!instanceLockAcquired) {
+  if (DEBUG) {
+    console.log("Another instance is already running. Exiting.");
+  }
+  Utils.quit();
+}
+
+const debugLog = (...args: unknown[]) => {
+  if (DEBUG) {
+    console.log("[buke:debug]", ...args);
+  }
+};
 
 const buildAboutMenu = (
   about: BukeConfig["about"],
@@ -259,10 +337,47 @@ const resolveContentWebview = () => {
   return contentWebview;
 };
 
-const isOAuthPopupUrl = (rawUrl: string) => {
+const OAUTH_HOST_PATTERNS = [
+  /accounts\.google\.com/,
+  /accounts\.google\.[a-z]+/,
+  /login\.microsoftonline\.com/,
+  /github\.com\/login/,
+  /facebook\.com\/.*\/dialog/,
+  /twitter\.com\/oauth/,
+  /appleid\.apple\.com/,
+];
+
+const OAUTH_PATH_PATTERNS = [
+  /\/oauth\//,
+  /\/auth\//,
+  /\/authorize/,
+  /\/login\/oauth/,
+  /\/signin/,
+  /\/login/,
+  /servicelogin/,
+  /\/o\/oauth2/,
+];
+
+const AUTH_POPUP_NAMES = new Set([
+  "AppleAuthentication",
+  "oauth2",
+  "oauth",
+  "google-auth",
+  "auth-popup",
+  "signin",
+  "login",
+]);
+
+const isOAuthPopupUrl = (rawUrl: string, windowName?: string) => {
+  if (windowName && AUTH_POPUP_NAMES.has(windowName)) {
+    return true;
+  }
+
   try {
     const parsed = new URL(rawUrl);
     const host = parsed.hostname.toLowerCase();
+    const pathname = parsed.pathname.toLowerCase();
+    const fullUrl = parsed.href.toLowerCase();
     if (!host) {
       return false;
     }
@@ -276,13 +391,19 @@ const isOAuthPopupUrl = (rawUrl: string) => {
       return true;
     }
 
-    return (
-      parsed.pathname.includes("/oauth") ||
-      parsed.search.includes("oauth=") ||
-      parsed.search.includes("client_id=") ||
-      parsed.pathname.includes("/signin") ||
-      parsed.pathname.includes("/login")
-    );
+    for (const pattern of OAUTH_HOST_PATTERNS) {
+      if (pattern.test(host) || pattern.test(fullUrl)) {
+        return true;
+      }
+    }
+
+    for (const pattern of OAUTH_PATH_PATTERNS) {
+      if (pattern.test(pathname) || pattern.test(fullUrl)) {
+        return true;
+      }
+    }
+
+    return parsed.search.includes("oauth=") || parsed.search.includes("client_id=");
   } catch {
     return false;
   }
@@ -578,11 +699,121 @@ const handleHostMessage = (event: unknown) => {
   if (!payload || typeof payload !== "object") {
     return;
   }
-  const nav = payload as { __buke_nav__?: boolean; url?: string; title?: string };
+
+  const msg = payload as Record<string, unknown>;
+
+  // Handle download requests from webview
+  if (msg.__buke_download__) {
+    handleDownloadMessage(msg);
+    return;
+  }
+
+  // Handle open-external requests from context menu
+  if (msg.__buke_open_external__ && typeof msg.url === "string") {
+    openInBrowser(msg.url);
+    return;
+  }
+
+  // Handle web Notification API forwarding
+  if (msg.__buke_notification__) {
+    try {
+      Utils.showNotification({
+        title: (msg.title as string) || APP_NAME,
+        body: (msg.body as string) || "",
+      });
+    } catch {
+      debugLog("Notification:", msg.title, msg.body);
+    }
+    return;
+  }
+
+  // Handle theme detection
+  if (msg.__buke_theme__ && typeof msg.mode === "string") {
+    debugLog("Theme detected:", msg.mode);
+    return;
+  }
+
+  // Handle SPA navigation
+  const nav = msg as { __buke_nav__?: boolean; url?: string; title?: string };
   if (!nav.__buke_nav__ || typeof nav.url !== "string" || !nav.url) {
     return;
   }
   recordNavigationHistory(nav.url, typeof nav.title === "string" ? nav.title : "");
+};
+
+const handleDownloadMessage = (msg: Record<string, unknown>) => {
+  const type = msg.type as string;
+  const filename = (msg.filename as string) || `download-${Date.now()}`;
+
+  if (type === "url" && typeof msg.url === "string") {
+    downloadFileFromUrl(msg.url, filename);
+  } else if (type === "binary" && typeof msg.base64 === "string") {
+    downloadFileFromBase64(msg.base64, filename);
+  }
+};
+
+const getDownloadsDir = () => {
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  return path.join(home, "Downloads");
+};
+
+const downloadFileFromUrl = async (url: string, filename: string) => {
+  try {
+    debugLog("Downloading:", url, "→", filename);
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(`Download failed (${response.status}): ${url}`);
+      showDownloadNotification(filename, false);
+      return;
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const targetPath = path.join(getDownloadsDir(), filename);
+    const { writeFile: writeFileAsync, mkdir: mkdirAsync } = await import("node:fs/promises");
+    await mkdirAsync(getDownloadsDir(), { recursive: true });
+    await writeFileAsync(targetPath, buffer);
+    debugLog("Downloaded to:", targetPath);
+    showDownloadNotification(filename, true);
+  } catch (error) {
+    console.log("Download failed:", error);
+    showDownloadNotification(filename, false);
+  }
+};
+
+const downloadFileFromBase64 = async (base64: string, filename: string) => {
+  try {
+    const buffer = Buffer.from(base64, "base64");
+    const targetPath = path.join(getDownloadsDir(), filename);
+    const { writeFile: writeFileAsync, mkdir: mkdirAsync } = await import("node:fs/promises");
+    await mkdirAsync(getDownloadsDir(), { recursive: true });
+    await writeFileAsync(targetPath, buffer);
+    debugLog("Downloaded (binary) to:", targetPath);
+    showDownloadNotification(filename, true);
+  } catch (error) {
+    console.log("Download failed:", error);
+    showDownloadNotification(filename, false);
+  }
+};
+
+const showDownloadNotification = (filename: string, success: boolean) => {
+  const msg = success ? `✓ ${filename}` : `✗ ${filename}`;
+
+  // Show in-webview toast
+  const webview = resolveContentWebview();
+  if (webview) {
+    webview.executeJavascript(
+      `typeof window.bukeToast === "function" && window.bukeToast(${JSON.stringify(msg)});`,
+    );
+  }
+
+  // Also show OS notification
+  try {
+    Utils.showNotification({
+      title: success ? "Download Complete" : "Download Failed",
+      body: filename,
+    });
+  } catch {
+    debugLog(success ? "Downloaded:" : "Download failed:", filename);
+  }
 };
 
 let navigationRulesApplied = false;
@@ -624,12 +855,32 @@ const applyNavigationRules = () => {
       if (!url) {
         return;
       }
+
+      if (navigationConfig.forceInternalNavigation) {
+        debugLog("Force-internal navigation:", url);
+        navigateInMainWebview(url);
+        return;
+      }
+
+      if (navigationConfig.internalUrlRegex) {
+        try {
+          const regex = new RegExp(navigationConfig.internalUrlRegex);
+          if (regex.test(url)) {
+            debugLog("Internal URL regex matched:", url);
+            navigateInMainWebview(url);
+            return;
+          }
+        } catch {
+          debugLog("Invalid internalUrlRegex:", navigationConfig.internalUrlRegex);
+        }
+      }
+
       if (isSameDomainAsBase(url)) {
         navigateInMainWebview(url);
         return;
       }
 
-      if (isOAuthPopupUrl(url) || isAllowedPopupHost(url)) {
+      if (navigationConfig.newWindow || isOAuthPopupUrl(url) || isAllowedPopupHost(url)) {
         openPopupWindow(url);
         return;
       }
@@ -643,6 +894,31 @@ const applyNavigationRules = () => {
     applyUserAgentOverride(webview, userAgentOverride);
     applySpaHistoryPatch(webview);
     applyZoom(webview, zoomLevel);
+    if (!navigationConfig.disabledWebShortcuts) {
+      applyBuiltinShortcuts(webview);
+    }
+    applyChineseIMEFix(webview);
+    applyNotificationOverride(webview);
+    if (runtimeConfig.darkMode) {
+      applyDarkMode(webview);
+    }
+    if (navigationConfig.disabledWebShortcuts) {
+      applyDisabledWebShortcuts(webview);
+    }
+    if (runtimeConfig.enableDragDrop) {
+      applyDragDrop(webview);
+    }
+    if (runtimeConfig.pastePlainText) {
+      applyPastePlainText(webview);
+    }
+    if (runtimeConfig.wasm) {
+      applyWasmHeaders(webview);
+    }
+    applyFullscreenPolyfill(webview);
+    applyToast(webview);
+    applyDownloadDetection(webview);
+    applyContextMenu(webview);
+    applyThemeDetection(webview);
     revealContentWebview();
   });
 };
@@ -726,6 +1002,22 @@ const clearSiteData = async () => {
   }
 };
 
+const clearSiteDataAndRestart = async () => {
+  try {
+    await session.cookies.clear();
+    await session.clearStorageData();
+    debugLog("Cache cleared, restarting...");
+    // Navigate back to the home URL to simulate a restart
+    if (BASE_URL) {
+      navigateInMainWebview(BASE_URL.href);
+    } else {
+      reloadContent();
+    }
+  } catch (error) {
+    console.log("Failed to clear cache and restart", error);
+  }
+};
+
 const toggleDevTools = () => {
   const webview = resolveContentWebview();
   if (!webview) {
@@ -768,8 +1060,15 @@ const applyWindowPreset = (preset: keyof typeof WINDOW_PRESETS) => {
 
 const MENU_REFRESH_DELAY_MS = 120;
 
+let alwaysOnTopState = Boolean(windowConfig.alwaysOnTop);
+
 const aboutMenu = buildAboutMenu(bukeConfig.about, APP_NAME, APP_URL);
+const menuOptions: MenuOptions = {
+  multiWindow: runtimeConfig.multiWindow,
+  alwaysOnTop: alwaysOnTopState,
+};
 const refreshApplicationMenu = () => {
+  menuOptions.alwaysOnTop = alwaysOnTopState;
   buildMenu(
     APP_NAME,
     isMacOS,
@@ -778,6 +1077,7 @@ const refreshApplicationMenu = () => {
     navigationHistory,
     APP_I18N_MENU,
     APP_LOCALE,
+    menuOptions,
   );
 };
 
@@ -806,12 +1106,38 @@ const menuHandlers = {
   windowStandard: () => applyWindowPreset("standard"),
   windowWide: () => applyWindowPreset("wide"),
   clearData: () => void clearSiteData(),
+  clearDataAndRestart: () => void clearSiteDataAndRestart(),
   openHistoryUrl: (url: string) => {
     navigateInMainWebview(url);
   },
   clearHistory: () => {
     navigationHistory = [];
     refreshApplicationMenu();
+  },
+  copyUrl: () => {
+    const webview = resolveContentWebview();
+    if (webview) {
+      webview.executeJavascript(`(() => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(window.location.href);
+        }
+      })();`);
+    }
+  },
+  toggleAlwaysOnTop: () => {
+    const win = getMainWindow();
+    if (!win) {
+      return;
+    }
+    alwaysOnTopState = !alwaysOnTopState;
+    win.setAlwaysOnTop(alwaysOnTopState);
+    refreshApplicationMenu();
+  },
+  newWindow: () => {
+    if (!runtimeConfig.multiWindow) {
+      return;
+    }
+    createMainWindow();
   },
   closeWindow: () => {
     const win = getMainWindow();
@@ -859,12 +1185,37 @@ const enforceMinSize = (win: BrowserWindow) => {
   }
 };
 
+const WINDOW_STATE_SAVE_DELAY_MS = 500;
+let windowStateSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+const scheduleWindowStateSave = (win: BrowserWindow) => {
+  if (windowStateSaveTimer !== null) {
+    clearTimeout(windowStateSaveTimer);
+  }
+  windowStateSaveTimer = setTimeout(() => {
+    windowStateSaveTimer = null;
+    const size = win.getSize();
+    const windowState: WindowState = {
+      width: size.width,
+      height: size.height,
+    };
+    void saveSettings(settingsPath, { windowState });
+  }, WINDOW_STATE_SAVE_DELAY_MS);
+};
+
 function createMainWindow() {
-  const initialWidth = Math.max(windowConfig.width, windowConfig.minWidth);
-  const initialHeight = Math.max(windowConfig.height, windowConfig.minHeight);
+  const savedState = persistedSettings?.windowState;
+  const initialWidth = savedState?.width
+    ? Math.max(savedState.width, windowConfig.minWidth)
+    : Math.max(windowConfig.width, windowConfig.minWidth);
+  const initialHeight = savedState?.height
+    ? Math.max(savedState.height, windowConfig.minHeight)
+    : Math.max(windowConfig.height, windowConfig.minHeight);
+  const windowTitle = windowConfig.title?.trim() || APP_NAME;
+  const startHidden = runtimeConfig.startToTray && trayConfig.enabled;
 
   const win = new BrowserWindow({
-    title: APP_NAME,
+    title: windowTitle,
     url: "views://main/index.html",
     frame: {
       x: 0,
@@ -878,6 +1229,7 @@ function createMainWindow() {
           transparent: true,
         }
       : {}),
+    ...(startHidden ? { hidden: true } : {}),
   });
 
   mainWindow = win;
@@ -889,8 +1241,16 @@ function createMainWindow() {
     setFullScreen(fullScreen: boolean): void;
   };
 
+  if (windowConfig.alwaysOnTop) {
+    win.setAlwaysOnTop(true);
+  }
+
+  if (windowConfig.title?.trim()) {
+    win.setTitle(windowConfig.title.trim());
+  }
+
   win.on("close", () => {
-    console.log("Window close requested");
+    debugLog("Window close requested");
     if (trayConfig.enabled && trayConfig.hideOnClose) {
       win.minimize();
       return;
@@ -901,15 +1261,16 @@ function createMainWindow() {
   });
 
   win.on("minimize", () => {
-    console.log("Window minimized");
+    debugLog("Window minimized");
   });
 
   win.on("restore", () => {
-    console.log("Window restored");
+    debugLog("Window restored");
   });
 
   win.on("resize", () => {
     enforceMinSize(win);
+    scheduleWindowStateSave(win);
   });
 
   if (windowConfig.maximized) {
@@ -921,7 +1282,40 @@ function createMainWindow() {
 
   ensureContentWebview();
 
+  if (DEBUG) {
+    setTimeout(() => {
+      const webview = resolveContentWebview();
+      if (webview) {
+        webview.toggleDevTools();
+      }
+    }, 1500);
+  }
+
   return win;
+}
+
+// Register activation shortcut with 300ms debounce
+if (instanceConfig.activationShortcut?.trim()) {
+  try {
+    const SHORTCUT_DEBOUNCE_MS = 300;
+    let lastShortcutTime = 0;
+    GlobalShortcut.register(instanceConfig.activationShortcut.trim(), () => {
+      const now = Date.now();
+      if (now - lastShortcutTime < SHORTCUT_DEBOUNCE_MS) {
+        return;
+      }
+      lastShortcutTime = now;
+      const win = getMainWindow();
+      if (!win || win.isMinimized()) {
+        showMainWindow();
+      } else {
+        hideMainWindow();
+      }
+    });
+    debugLog("Activation shortcut registered:", instanceConfig.activationShortcut);
+  } catch (error) {
+    debugLog("Failed to register activation shortcut:", error);
+  }
 }
 
 if (BASE_URL) {
@@ -930,7 +1324,13 @@ if (BASE_URL) {
 refreshApplicationMenu();
 warnProxyUnsupported();
 setupTray(
-  { enabled: trayConfig.enabled, icon: trayConfig.icon, appName: APP_NAME, configDir },
+  {
+    enabled: trayConfig.enabled,
+    icon: trayConfig.icon,
+    appName: APP_NAME,
+    configDir,
+    multiWindow: runtimeConfig.multiWindow,
+  },
   {
     show: showMainWindow,
     hide: hideMainWindow,
@@ -943,6 +1343,7 @@ setupTray(
       }
     },
     quit: () => Utils.quit(),
+    newWindow: runtimeConfig.multiWindow ? () => createMainWindow() : undefined,
   },
 );
 createMainWindow();

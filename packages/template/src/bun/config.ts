@@ -18,6 +18,8 @@ export type BukeConfig = {
     hideTitleBar?: boolean;
     fullscreen?: boolean;
     maximized?: boolean;
+    alwaysOnTop?: boolean;
+    title?: string;
   };
   tray?: {
     enabled?: boolean;
@@ -27,6 +29,34 @@ export type BukeConfig = {
   network?: {
     userAgent?: string;
     proxyUrl?: string;
+  };
+  navigation?: {
+    forceInternalNavigation?: boolean;
+    internalUrlRegex?: string;
+    disabledWebShortcuts?: boolean;
+    newWindow?: boolean;
+  };
+  instance?: {
+    multiInstance?: boolean;
+    activationShortcut?: string;
+  };
+  runtime?: {
+    darkMode?: boolean;
+    startToTray?: boolean;
+    debug?: boolean;
+    incognito?: boolean;
+    enableDragDrop?: boolean;
+    pastePlainText?: boolean;
+    ignoreCertificateErrors?: boolean;
+    wasm?: boolean;
+    camera?: boolean;
+    microphone?: boolean;
+    multiWindow?: boolean;
+  };
+  build?: {
+    appVersion?: string;
+    install?: boolean;
+    iterativeBuild?: boolean;
   };
   macosSafeArea?: {
     enabled?: boolean;
@@ -53,6 +83,7 @@ export type BukeConfig = {
       [key: string]: string;
     };
   };
+  useLocalFile?: string;
 };
 
 export type InjectionAssets = {
@@ -60,8 +91,16 @@ export type InjectionAssets = {
   js: string[];
 };
 
+export type WindowState = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+
 export type Settings = {
   zoomLevel?: number;
+  windowState?: WindowState;
 };
 
 export const DEFAULT_ALLOWLIST = [
@@ -78,6 +117,9 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
   window: Required<NonNullable<BukeConfig["window"]>>;
   tray: Required<NonNullable<BukeConfig["tray"]>>;
   network: Required<NonNullable<BukeConfig["network"]>>;
+  navigation: Required<NonNullable<BukeConfig["navigation"]>>;
+  instance: Required<NonNullable<BukeConfig["instance"]>>;
+  runtime: Required<NonNullable<BukeConfig["runtime"]>>;
   about: Required<NonNullable<BukeConfig["about"]>>;
   i18n: Required<NonNullable<BukeConfig["i18n"]>>;
 } = {
@@ -93,6 +135,8 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
     hideTitleBar: false,
     fullscreen: false,
     maximized: false,
+    alwaysOnTop: false,
+    title: "",
   },
   tray: {
     enabled: false,
@@ -102,6 +146,29 @@ export const DEFAULT_CONFIG: Required<Pick<BukeConfig, "partition" | "zoom" | "a
   network: {
     userAgent: "",
     proxyUrl: "",
+  },
+  navigation: {
+    forceInternalNavigation: false,
+    internalUrlRegex: "",
+    disabledWebShortcuts: false,
+    newWindow: false,
+  },
+  instance: {
+    multiInstance: false,
+    activationShortcut: "",
+  },
+  runtime: {
+    darkMode: false,
+    startToTray: false,
+    debug: false,
+    incognito: false,
+    enableDragDrop: false,
+    pastePlainText: false,
+    ignoreCertificateErrors: false,
+    wasm: false,
+    camera: false,
+    microphone: false,
+    multiWindow: false,
   },
   macosSafeArea: {
     enabled: false,
@@ -168,6 +235,18 @@ export function normalizeConfig(config: BukeConfig): BukeConfig {
     network: {
       ...DEFAULT_CONFIG.network,
       ...(config.network ?? {}),
+    },
+    navigation: {
+      ...DEFAULT_CONFIG.navigation,
+      ...(config.navigation ?? {}),
+    },
+    instance: {
+      ...DEFAULT_CONFIG.instance,
+      ...(config.instance ?? {}),
+    },
+    runtime: {
+      ...DEFAULT_CONFIG.runtime,
+      ...(config.runtime ?? {}),
     },
     macosSafeArea: {
       ...DEFAULT_CONFIG.macosSafeArea,

@@ -16,6 +16,7 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",
+    "test": "bun test packages/cli/src/__tests__/",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
     "pack:kimi": "bun run packages/cli/src/index.ts pack --config packages/examples/kimi/buke.pack.json --force",
     "pack:weread": "bun run packages/cli/src/index.ts pack --config packages/examples/weread/buke.pack.json --force",

@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a problem with Buke
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Search before asking
+      description: >
+        Please check [existing issues](https://github.com/hehehai/buke/issues?q=) before reporting.
+      options:
+        - label: >
+            I searched in the [issues](https://github.com/hehehai/buke/issues?q=) and found nothing similar.
+          required: true
+  - type: textarea
+    attributes:
+      label: Buke version
+      description: >
+        Please provide the version of Buke you are using (`buke --version`).
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: System version
+      description: >
+        Please provide the version of your system (e.g., macOS 15.2, Windows 11, Ubuntu 24.04).
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Bun version
+      description: >
+        Please provide the Bun version (`bun --version`).
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Build command
+      description: >
+        Please provide the exact command you used (e.g., `buke pack https://github.com --name GitHub`).
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: Please describe the steps to reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+  - type: checkboxes
+    attributes:
+      label: Are you willing to submit a PR?
+      options:
+        - label: I'm willing to submit a PR!

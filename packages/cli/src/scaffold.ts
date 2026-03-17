@@ -1,7 +1,14 @@
 import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { InjectConfig, ProjectInfo } from "./config";
+import type {
+  BuildConfig,
+  InjectConfig,
+  InstanceConfig,
+  NavigationConfig,
+  ProjectInfo,
+  RuntimeConfig,
+} from "./config";
 import { TEXT_EXTENSIONS } from "./constants";
 import { prepareIconAssets } from "./icons";
 
@@ -153,6 +160,12 @@ export async function syncRuntimeConfig(
   if (projectInfo.window.maximized) {
     windowConfig.maximized = true;
   }
+  if (projectInfo.window.alwaysOnTop) {
+    windowConfig.alwaysOnTop = true;
+  }
+  if (projectInfo.window.title) {
+    windowConfig.title = projectInfo.window.title;
+  }
   if (Object.keys(windowConfig).length > 0) {
     runtimeConfig.window = windowConfig;
   }
@@ -192,6 +205,34 @@ export async function syncRuntimeConfig(
 
   if (projectInfo.i18n && Object.keys(projectInfo.i18n).length > 0) {
     runtimeConfig.i18n = projectInfo.i18n;
+  }
+
+  if (projectInfo.zoom !== undefined) {
+    runtimeConfig.zoom = projectInfo.zoom;
+  }
+
+  const navConfig = syncNavigationConfig(projectInfo.navigation);
+  if (Object.keys(navConfig).length > 0) {
+    runtimeConfig.navigation = navConfig;
+  }
+
+  const instanceCfg = syncInstanceConfig(projectInfo.instance);
+  if (Object.keys(instanceCfg).length > 0) {
+    runtimeConfig.instance = instanceCfg;
+  }
+
+  const runtimeCfg = syncRuntimeFlags(projectInfo.runtime);
+  if (Object.keys(runtimeCfg).length > 0) {
+    runtimeConfig.runtime = runtimeCfg;
+  }
+
+  const buildCfg = syncBuildConfig(projectInfo.buildConfig);
+  if (Object.keys(buildCfg).length > 0) {
+    runtimeConfig.build = buildCfg;
+  }
+
+  if (projectInfo.useLocalFile) {
+    runtimeConfig.useLocalFile = projectInfo.useLocalFile;
   }
 
   if (projectInfo.safeArea.enabled) {
@@ -383,6 +424,58 @@ function unwrapInline(entry: string): string {
     return entry.slice(INLINE_PREFIX.length);
   }
   return entry;
+}
+
+function syncNavigationConfig(nav: NavigationConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (nav.forceInternalNavigation) {
+    out.forceInternalNavigation = true;
+  }
+  if (nav.internalUrlRegex) {
+    out.internalUrlRegex = nav.internalUrlRegex;
+  }
+  if (nav.disabledWebShortcuts) {
+    out.disabledWebShortcuts = true;
+  }
+  if (nav.newWindow) {
+    out.newWindow = true;
+  }
+  return out;
+}
+
+function syncInstanceConfig(inst: InstanceConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (inst.multiInstance) {
+    out.multiInstance = true;
+  }
+  if (inst.activationShortcut) {
+    out.activationShortcut = inst.activationShortcut;
+  }
+  return out;
+}
+
+function syncRuntimeFlags(rt: RuntimeConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (rt.darkMode) out.darkMode = true;
+  if (rt.startToTray) out.startToTray = true;
+  if (rt.debug) out.debug = true;
+  if (rt.incognito) out.incognito = true;
+  if (rt.enableDragDrop) out.enableDragDrop = true;
+  if (rt.pastePlainText) out.pastePlainText = true;
+  if (rt.ignoreCertificateErrors) out.ignoreCertificateErrors = true;
+  if (rt.wasm) out.wasm = true;
+  if (rt.camera) out.camera = true;
+  if (rt.microphone) out.microphone = true;
+  if (rt.multiWindow) out.multiWindow = true;
+  return out;
+}
+
+function syncBuildConfig(build: BuildConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (build.appVersion) out.appVersion = build.appVersion;
+  if (build.install) out.install = true;
+  if (build.iterativeBuild) out.iterativeBuild = true;
+  return out;
 }
 
 async function replacePlaceholders(root: string, replacements: Map<string, string>) {

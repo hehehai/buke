@@ -7,6 +7,7 @@ export type TrayHandlers = {
   hide: () => void;
   toggle: () => void;
   quit: () => void;
+  newWindow?: () => void;
 };
 
 export type TrayConfig = {
@@ -14,6 +15,7 @@ export type TrayConfig = {
   icon?: string;
   appName: string;
   configDir: string;
+  multiWindow?: boolean;
 };
 
 export function setupTray(config: TrayConfig, handlers: TrayHandlers) {
@@ -33,6 +35,9 @@ export function setupTray(config: TrayConfig, handlers: TrayHandlers) {
   });
 
   tray.setMenu([
+    ...(config.multiWindow
+      ? [{ type: "normal" as const, label: "New Window", action: "tray-new-window" }]
+      : []),
     { type: "normal" as const, label: "Show", action: "tray-show" },
     { type: "normal" as const, label: "Hide", action: "tray-hide" },
     { type: "separator" as const },
@@ -51,6 +56,10 @@ export function setupTray(config: TrayConfig, handlers: TrayHandlers) {
     }
     if (action === "tray-show") {
       handlers.show();
+      return;
+    }
+    if (action === "tray-new-window") {
+      handlers.newWindow?.();
       return;
     }
 

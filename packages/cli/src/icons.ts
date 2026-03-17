@@ -59,10 +59,21 @@ async function resolveIconSource(
 }
 
 async function tryDownloadFavicon(baseUrl: string, assetsDir: string, prefix: string) {
+  // Try Google's high-res favicon service first
+  try {
+    const host = new URL(baseUrl).hostname;
+    const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=256`;
+    const result = await downloadIcon(googleFaviconUrl, assetsDir, prefix);
+    if (result) {
+      return result;
+    }
+  } catch {}
+
+  // Fall back to direct favicon.ico
   try {
     const faviconUrl = new URL("/favicon.ico", baseUrl).toString();
     return await downloadIcon(faviconUrl, assetsDir, prefix);
-  } catch (error) {
+  } catch {
     return null;
   }
 }

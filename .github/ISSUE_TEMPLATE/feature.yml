@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Search before asking
+      description: >
+        Please search [issues](https://github.com/hehehai/buke/issues?q=) to check if your idea has already been proposed.
+      options:
+        - label: >
+            I searched in the [issues](https://github.com/hehehai/buke/issues?q=) and found nothing similar.
+          required: true
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Describe why this feature is needed and what problem it solves.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed solution
+      description: Describe the proposed solution and any related materials.
+  - type: textarea
+    attributes:
+      label: Alternatives considered
+      description: Describe other solutions or features you considered.
+  - type: textarea
+    attributes:
+      label: Additional context
+  - type: checkboxes
+    attributes:
+      label: Are you willing to submit a PR?
+      options:
+        - label: I'm willing to submit a PR!

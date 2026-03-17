@@ -1,0 +1,40 @@
+name: Build All Popular Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Build environment"
+        required: false
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - canary
+          - stable
+
+jobs:
+  read-apps:
+    name: Read App List
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.read.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read default_app_list.json
+        id: read
+        run: |
+          echo "apps=$(jq -c '.' default_app_list.json)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.app.name }}
+    needs: read-apps
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.read-apps.outputs.apps) }}
+    uses: ./.github/workflows/build-app.yml
+    with:
+      name: ${{ matrix.app.name }}
+      config: ${{ matrix.app.config }}
+      env: ${{ inputs.env || 'dev' }}

@@ -17,6 +17,8 @@ export type WindowConfig = {
   hideTitleBar: boolean;
   fullscreen: boolean;
   maximized: boolean;
+  alwaysOnTop: boolean;
+  title?: string;
 };
 
 export type TrayConfig = {
@@ -54,6 +56,38 @@ export type InjectConfig = {
   js?: string[];
 };
 
+export type NavigationConfig = {
+  forceInternalNavigation: boolean;
+  internalUrlRegex?: string;
+  disabledWebShortcuts: boolean;
+  newWindow: boolean;
+};
+
+export type InstanceConfig = {
+  multiInstance: boolean;
+  activationShortcut?: string;
+};
+
+export type RuntimeConfig = {
+  darkMode: boolean;
+  startToTray: boolean;
+  debug: boolean;
+  incognito: boolean;
+  enableDragDrop: boolean;
+  pastePlainText: boolean;
+  ignoreCertificateErrors: boolean;
+  wasm: boolean;
+  camera: boolean;
+  microphone: boolean;
+  multiWindow: boolean;
+};
+
+export type BuildConfig = {
+  appVersion?: string;
+  install: boolean;
+  iterativeBuild: boolean;
+};
+
 export type PackConfigFile = {
   name?: string;
   id?: string;
@@ -63,14 +97,20 @@ export type PackConfigFile = {
   icon?: string;
   outDir?: string;
   env?: string;
+  zoom?: number;
   window?: Partial<WindowConfig>;
   tray?: Partial<TrayConfig>;
   network?: Partial<NetworkConfig>;
+  navigation?: Partial<NavigationConfig>;
+  instance?: Partial<InstanceConfig>;
+  runtime?: Partial<RuntimeConfig>;
+  build?: Partial<BuildConfig>;
   inject?: InjectConfig;
   macosSafeArea?: Partial<SafeAreaConfig>;
   about?: AboutConfig;
   locale?: string;
   i18n?: I18nConfig;
+  useLocalFile?: string;
 };
 
 export type ProjectInfo = {
@@ -84,11 +124,17 @@ export type ProjectInfo = {
   window: WindowConfig;
   tray: TrayConfig;
   network: NetworkConfig;
+  navigation: NavigationConfig;
+  instance: InstanceConfig;
+  runtime: RuntimeConfig;
+  buildConfig: BuildConfig;
   about?: AboutConfig;
   locale?: string;
   i18n?: I18nConfig;
   icon?: string;
   inject?: InjectConfig;
+  zoom?: number;
+  useLocalFile?: string;
 };
 
 export function deriveProjectInfo(
@@ -103,8 +149,13 @@ export function deriveProjectInfo(
   const appName = (flags.name as string) ?? config?.name ?? defaultName;
   const slug = slugify(appName);
   const appId = (flags.id as string) ?? config?.id ?? `com.buke.${slug}`;
-  const partition = (flags.partition as string) ?? config?.partition ?? "persist:default";
+  const incognito =
+    flags.incognito !== undefined ? Boolean(flags.incognito) : Boolean(config?.runtime?.incognito);
+  const partition = incognito
+    ? "default"
+    : ((flags.partition as string) ?? config?.partition ?? "persist:default");
   const iconInput = typeof flags.icon === "string" ? flags.icon : config?.icon;
+  const zoom = deriveZoom(flags, config);
 
   return {
     normalizedUrl,
@@ -117,11 +168,20 @@ export function deriveProjectInfo(
     window: deriveWindow(flags, config),
     tray: deriveTray(flags, config, configDir),
     network: deriveNetwork(flags, config),
+    navigation: deriveNavigation(flags, config),
+    instance: deriveInstance(flags, config),
+    runtime: deriveRuntime(flags, config),
+    buildConfig: deriveBuild(flags, config),
     icon: resolveAssetPath(iconInput, configDir),
     about: config?.about,
     locale: config?.locale?.trim(),
     i18n: config?.i18n,
     inject: config?.inject,
+    zoom,
+    useLocalFile:
+      typeof flags["use-local-file"] === "string"
+        ? (flags["use-local-file"] as string)
+        : config?.useLocalFile,
   };
 }
 
@@ -190,7 +250,23 @@ export function deriveWindow(flags: Flags, config?: PackConfigFile): WindowConfi
   const maximized =
     flags.maximized !== undefined ? Boolean(flags.maximized) : Boolean(config?.window?.maximized);
 
-  return { width, height, minWidth, minHeight, hideTitleBar, fullscreen, maximized };
+  const alwaysOnTop =
+    flags["always-on-top"] !== undefined
+      ? Boolean(flags["always-on-top"])
+      : Boolean(config?.window?.alwaysOnTop);
+  const title = typeof flags.title === "string" ? (flags.title as string) : config?.window?.title;
+
+  return {
+    width,
+    height,
+    minWidth,
+    minHeight,
+    hideTitleBar,
+    fullscreen,
+    maximized,
+    alwaysOnTop,
+    title,
+  };
 }
 
 export function deriveTray(
@@ -227,6 +303,96 @@ export function deriveNetwork(flags: Flags, config?: PackConfigFile): NetworkCon
       : config?.network?.proxyUrl;
 
   return { userAgent, proxyUrl };
+}
+
+export function deriveNavigation(flags: Flags, config?: PackConfigFile): NavigationConfig {
+  const forceInternalNavigation =
+    flags["force-internal-navigation"] !== undefined
+      ? Boolean(flags["force-internal-navigation"])
+      : Boolean(config?.navigation?.forceInternalNavigation);
+  const internalUrlRegex =
+    typeof flags["internal-url-regex"] === "string"
+      ? (flags["internal-url-regex"] as string)
+      : config?.navigation?.internalUrlRegex;
+  const disabledWebShortcuts =
+    flags["disabled-web-shortcuts"] !== undefined
+      ? Boolean(flags["disabled-web-shortcuts"])
+      : Boolean(config?.navigation?.disabledWebShortcuts);
+  const newWindow =
+    flags["new-window"] !== undefined
+      ? Boolean(flags["new-window"])
+      : Boolean(config?.navigation?.newWindow);
+
+  return { forceInternalNavigation, internalUrlRegex, disabledWebShortcuts, newWindow };
+}
+
+export function deriveInstance(flags: Flags, config?: PackConfigFile): InstanceConfig {
+  const multiInstance =
+    flags["multi-instance"] !== undefined
+      ? Boolean(flags["multi-instance"])
+      : Boolean(config?.instance?.multiInstance);
+  const activationShortcut =
+    typeof flags["activation-shortcut"] === "string"
+      ? (flags["activation-shortcut"] as string)
+      : config?.instance?.activationShortcut;
+
+  return { multiInstance, activationShortcut };
+}
+
+export function deriveRuntime(flags: Flags, config?: PackConfigFile): RuntimeConfig {
+  const boolFlag = (flagName: string, configValue?: boolean) =>
+    flags[flagName] !== undefined ? Boolean(flags[flagName]) : Boolean(configValue);
+
+  return {
+    darkMode: boolFlag("dark-mode", config?.runtime?.darkMode),
+    startToTray: boolFlag("start-to-tray", config?.runtime?.startToTray),
+    debug: boolFlag("debug", config?.runtime?.debug),
+    incognito: boolFlag("incognito", config?.runtime?.incognito),
+    enableDragDrop: boolFlag("enable-drag-drop", config?.runtime?.enableDragDrop),
+    pastePlainText: boolFlag("paste-plain-text", config?.runtime?.pastePlainText),
+    ignoreCertificateErrors: boolFlag(
+      "ignore-certificate-errors",
+      config?.runtime?.ignoreCertificateErrors,
+    ),
+    wasm: boolFlag("wasm", config?.runtime?.wasm),
+    camera: boolFlag("camera", config?.runtime?.camera),
+    microphone: boolFlag("microphone", config?.runtime?.microphone),
+    multiWindow: boolFlag("multi-window", config?.runtime?.multiWindow),
+  };
+}
+
+export function deriveBuild(flags: Flags, config?: PackConfigFile): BuildConfig {
+  const appVersion =
+    typeof flags["app-version"] === "string"
+      ? (flags["app-version"] as string)
+      : config?.build?.appVersion;
+  const install =
+    flags.install !== undefined ? Boolean(flags.install) : Boolean(config?.build?.install);
+  const iterativeBuild =
+    flags["iterative-build"] !== undefined
+      ? Boolean(flags["iterative-build"])
+      : Boolean(config?.build?.iterativeBuild);
+
+  return { appVersion, install, iterativeBuild };
+}
+
+function deriveZoom(flags: Flags, config?: PackConfigFile): number | undefined {
+  const raw = flags.zoom;
+  if (raw !== undefined) {
+    const parsed = parseNumberFlag(raw, -1);
+    if (parsed > 10) {
+      return parsed / 100;
+    }
+    return parsed > 0 ? parsed : undefined;
+  }
+  if (typeof config?.zoom === "number") {
+    const val = config.zoom;
+    if (val > 10) {
+      return val / 100;
+    }
+    return val > 0 ? val : undefined;
+  }
+  return undefined;
 }
 
 function toNumber(value: unknown, fallback: number) {

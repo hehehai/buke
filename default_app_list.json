@@ -1,0 +1,50 @@
+[
+  {
+    "name": "DeepSeek",
+    "slug": "deepseek",
+    "url": "https://chat.deepseek.com/",
+    "config": "packages/examples/deepseek/buke.pack.json"
+  },
+  {
+    "name": "Twitter",
+    "slug": "twitter",
+    "url": "https://x.com/",
+    "config": "packages/examples/twitter/buke.pack.json"
+  },
+  {
+    "name": "YouTube",
+    "slug": "youtube",
+    "url": "https://www.youtube.com/",
+    "config": "packages/examples/youtube/buke.pack.json"
+  },
+  {
+    "name": "YouTube Music",
+    "slug": "youtube-music",
+    "url": "https://music.youtube.com/",
+    "config": "packages/examples/youtube-music/buke.pack.json"
+  },
+  {
+    "name": "Kimi",
+    "slug": "kimi",
+    "url": "https://www.kimi.com/",
+    "config": "packages/examples/kimi/buke.pack.json"
+  },
+  {
+    "name": "WeRead",
+    "slug": "weread",
+    "url": "https://weread.qq.com/",
+    "config": "packages/examples/weread/buke.pack.json"
+  },
+  {
+    "name": "Excalidraw",
+    "slug": "excalidraw",
+    "url": "https://excalidraw.com/",
+    "config": "packages/examples/excalidraw/buke.pack.json"
+  },
+  {
+    "name": "XiaoHongShu",
+    "slug": "xiaohongshu",
+    "url": "https://www.xiaohongshu.com/explore",
+    "config": "packages/examples/xiaohongshu/buke.pack.json"
+  }
+]

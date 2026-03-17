@@ -14,10 +14,14 @@ export type MenuHandlers = {
   windowStandard: () => void;
   windowWide: () => void;
   clearData: () => void;
+  clearDataAndRestart: () => void;
   closeWindow: () => void;
   quit: () => void;
   openHistoryUrl: (url: string) => void;
   clearHistory: () => void;
+  copyUrl: () => void;
+  toggleAlwaysOnTop: () => void;
+  newWindow: () => void;
 };
 
 export type MenuLocaleConfig = {
@@ -44,6 +48,7 @@ type BuiltinMenuLocale = {
   view: string;
   window: string;
   about: string;
+  edit: string;
   back: string;
   forward: string;
   home: string;
@@ -61,6 +66,11 @@ type BuiltinMenuLocale = {
   compact: string;
   standard: string;
   wide: string;
+  copyUrl: string;
+  alwaysOnTop: string;
+  newWindow: string;
+  pasteMatchStyle: string;
+  clearCacheRestart: string;
 };
 
 const DEFAULT_MENU_I18N: BuiltinMenuLocale = {
@@ -68,6 +78,7 @@ const DEFAULT_MENU_I18N: BuiltinMenuLocale = {
   view: "View",
   window: "Window",
   about: "About",
+  edit: "Edit",
   back: "Back",
   forward: "Forward",
   home: "Home",
@@ -85,6 +96,11 @@ const DEFAULT_MENU_I18N: BuiltinMenuLocale = {
   compact: "Compact",
   standard: "Standard",
   wide: "Wide",
+  copyUrl: "Copy URL",
+  alwaysOnTop: "Always on Top",
+  newWindow: "New Window",
+  pasteMatchStyle: "Paste and Match Style",
+  clearCacheRestart: "Clear Cache & Restart",
 };
 
 const RAW_PRESET_MENU_I18N: Record<string, Partial<BuiltinMenuLocale>> = {
@@ -102,6 +118,7 @@ const RAW_PRESET_MENU_I18N: Record<string, Partial<BuiltinMenuLocale>> = {
     view: "视图",
     window: "窗口",
     about: "关于",
+    edit: "编辑",
     reload: "重新加载",
     toggleDevTools: "切换开发者工具",
     clearSiteData: "清除站点数据",
@@ -113,6 +130,11 @@ const RAW_PRESET_MENU_I18N: Record<string, Partial<BuiltinMenuLocale>> = {
     compact: "紧凑",
     standard: "标准",
     wide: "宽屏",
+    copyUrl: "复制网址",
+    alwaysOnTop: "窗口置顶",
+    newWindow: "新建窗口",
+    pasteMatchStyle: "粘贴并匹配样式",
+    clearCacheRestart: "清除缓存并重启",
   },
   "zh-hans": {
     operations: "操作",
@@ -882,6 +904,11 @@ const resolveMenuLocale = (localeConfig: MenuLocaleConfig = {}, locale?: string)
   return output;
 };
 
+export type MenuOptions = {
+  multiWindow?: boolean;
+  alwaysOnTop?: boolean;
+};
+
 export function buildMenu(
   appName: string,
   isMacOS: boolean,
@@ -890,6 +917,7 @@ export function buildMenu(
   historyItems: NavigationHistoryItem[],
   menuLocale: MenuLocaleConfig = {},
   appLocale?: string,
+  options: MenuOptions = {},
 ) {
   const localized = resolveMenuLocale(menuLocale, appLocale);
   const historySubmenu = historyItems.map((entry) => ({
@@ -897,10 +925,17 @@ export function buildMenu(
     action: `${OPEN_HISTORY_PREFIX}${encodeURIComponent(entry.url)}`,
   }));
 
+  const alwaysOnTopLabel = options.alwaysOnTop
+    ? `✓ ${localized.alwaysOnTop}`
+    : localized.alwaysOnTop;
+
   ApplicationMenu.setApplicationMenu([
     {
       label: appName,
       submenu: [
+        ...(options.multiWindow
+          ? [{ label: localized.newWindow, action: "new-window", accelerator: "n" }]
+          : []),
         { label: localized.reload, action: "reload", accelerator: "r" },
         {
           label: localized.toggleDevTools,
@@ -908,6 +943,7 @@ export function buildMenu(
           accelerator: "i",
         },
         { label: localized.clearSiteData, action: "clear-data" },
+        { label: localized.clearCacheRestart, action: "clear-data-restart" },
         ...(isMacOS
           ? [
               { type: "separator" as const },
@@ -919,11 +955,30 @@ export function buildMenu(
       ],
     },
     {
+      label: localized.edit,
+      submenu: [
+        ...(isMacOS
+          ? [
+              { role: "undo" },
+              { role: "redo" },
+              { type: "separator" as const },
+              { role: "cut" },
+              { role: "copy" },
+              { role: "paste" },
+              { role: "selectAll" },
+              { type: "separator" as const },
+              { label: localized.copyUrl, action: "copy-url", accelerator: "l" },
+            ]
+          : [{ label: localized.copyUrl, action: "copy-url", accelerator: "l" }]),
+      ],
+    },
+    {
       label: localized.view,
       submenu: [
         { label: localized.zoomIn, action: "zoom-in", accelerator: "+" },
         { label: localized.zoomOut, action: "zoom-out", accelerator: "-" },
         { label: localized.zoomReset, action: "zoom-reset", accelerator: "0" },
+        ...(isMacOS ? [{ type: "separator" as const }, { role: "togglefullscreen" }] : []),
       ],
     },
     {
@@ -956,6 +1011,8 @@ export function buildMenu(
               { type: "separator" as const },
             ]
           : []),
+        { label: alwaysOnTopLabel, action: "toggle-always-on-top" },
+        { type: "separator" as const },
         { label: localized.compact, action: "window-compact" },
         { label: localized.standard, action: "window-standard" },
         { label: localized.wide, action: "window-wide" },
@@ -1039,6 +1096,9 @@ export function handleMenuAction(action: string, handlers: MenuHandlers) {
     case "clear-data":
       handlers.clearData();
       return;
+    case "clear-data-restart":
+      handlers.clearDataAndRestart();
+      return;
     case "close-main-window":
       handlers.closeWindow();
       return;
@@ -1047,6 +1107,15 @@ export function handleMenuAction(action: string, handlers: MenuHandlers) {
       return;
     case "clear-history":
       handlers.clearHistory();
+      return;
+    case "copy-url":
+      handlers.copyUrl();
+      return;
+    case "toggle-always-on-top":
+      handlers.toggleAlwaysOnTop();
+      return;
+    case "new-window":
+      handlers.newWindow();
       return;
     default:
       return;

@@ -69,12 +69,12 @@ If you only set `locale`, menus will use built-in presets automatically (20+ loc
 
 Supported menu keys:
 
-- `operations`, `view`, `window`, `about`, `history`
+- `operations`, `view`, `window`, `about`, `edit`, `history`
 - `back`, `forward`, `home`, `refresh`
-- `reload`, `toggleDevTools`, `clearSiteData`, `closeWindow`, `quit`
+- `reload`, `toggleDevTools`, `clearSiteData`, `clearCacheRestart`, `closeWindow`, `quit`
 - `zoomIn`, `zoomOut`, `zoomReset`
 - `compact`, `standard`, `wide`
-- `clearHistory`
+- `clearHistory`, `copyUrl`, `alwaysOnTop`, `newWindow`, `pasteMatchStyle`
 
 All keys are optional. Missing keys fall back to English.
 
@@ -109,6 +109,8 @@ Built-in supported locales:
 - `hideTitleBar`: Hide the macOS title bar. Default `false`.
 - `fullscreen`: Launch in fullscreen. Default `false`.
 - `maximized`: Launch maximized. Default `false`.
+- `alwaysOnTop`: Keep window above all others. Default `false`.
+- `title`: Override window title. Defaults to the app name.
 
 ### tray
 
@@ -120,6 +122,90 @@ Built-in supported locales:
 
 - `userAgent`: Override User-Agent (JS side).
 - `proxyUrl`: Proxy URL (note: Electrobun does not support per-app proxy yet).
+
+### navigation
+
+- `forceInternalNavigation`: Redirect all navigations (including popups) into the main webview. Default `false`.
+- `internalUrlRegex`: Regex pattern for URLs to keep in-app. URLs matching this pattern stay in the webview; others follow normal popup rules.
+- `disabledWebShortcuts`: Block `Ctrl/Cmd+key` keyboard shortcuts on the web page. Default `false`. Standard clipboard shortcuts (Ctrl/Cmd+A/C/V/X/Z) are preserved.
+- `newWindow`: Allow popup windows for auth flows and other window.open calls. Default `false`.
+
+### instance
+
+- `multiInstance`: Allow multiple app instances to run simultaneously. Default `false` (single-instance by default using file lock).
+- `activationShortcut`: Global shortcut to toggle window visibility (e.g. `"CmdOrControl+Shift+P"`).
+
+### runtime
+
+- `darkMode`: Force dark color scheme in the webview. Default `false`.
+- `startToTray`: Start the app hidden (minimized to tray). Requires `tray.enabled: true`. Default `false`.
+- `debug`: Enable verbose console logging and auto-open DevTools on launch. Default `false`.
+- `incognito`: Use a non-persisting session partition (no cookies/storage saved after restart). Default `false`.
+- `enableDragDrop`: Enable file drag and drop support in the webview. Default `false`.
+- `pastePlainText`: Force paste as plain text (strips formatting). Default `false`.
+- `ignoreCertificateErrors`: Ignore TLS certificate errors (use with caution). Default `false`.
+- `wasm`: Enable WebAssembly CORS isolation headers. Default `false`.
+- `camera`: Request camera permission (macOS entitlement). Default `false`.
+- `microphone`: Request microphone permission (macOS entitlement). Default `false`.
+- `multiWindow`: Enable multi-window support via menu. Default `false`.
+
+### build
+
+- `appVersion`: Application version string (injected into `electrobun.config.ts`).
+- `install`: Install app to `/Applications` (macOS) after build. Default `false`.
+- `iterativeBuild`: Skip DMG/installer, produce app bundle only. Default `false`.
+
+### zoom
+
+- `zoom`: Zoom level for the webview. Accepts `0.5`-`2.0` (fractional) or `50`-`200` (percentage, auto-divided by 100). Persisted in settings.
+
+### App Presets
+
+You can use preset names instead of URLs for popular apps:
+
+```bash
+buke pack deepseek       # → https://chat.deepseek.com/
+buke pack chatgpt        # → https://chatgpt.com/
+buke pack youtube        # → https://www.youtube.com/
+buke pack github         # → https://github.com/
+buke pack twitter        # → https://x.com/
+```
+
+Available presets: `chatgpt`, `claude`, `deepseek`, `discord`, `excalidraw`, `figma`, `github`, `google-maps`, `google-translate`, `hacker-news`, `kimi`, `notion`, `poe`, `reddit`, `spotify`, `twitter`, `whatsapp`, `x`, `youtube`.
+
+### Local File Packaging
+
+You can package a local HTML file instead of a URL:
+
+```bash
+buke pack https://localhost --use-local-file ./index.html
+```
+
+### Built-in Runtime Features
+
+The following features are automatically active in every Buke app:
+
+- **Keyboard shortcuts** (when `disabledWebShortcuts` is not set): `Cmd/Ctrl+[` back, `Cmd/Ctrl+]` forward, `Cmd/Ctrl+R` reload, `Cmd/Ctrl+↑` scroll top, `Cmd/Ctrl+↓` scroll bottom, `Cmd/Ctrl+-/+/0` zoom.
+- **Download detection**: Clicks on downloadable files (65+ types: PDF, ZIP, EXE, etc.) are intercepted and saved to `~/Downloads` with a toast notification and system notification.
+- **Right-click context menu**: Right-clicking images/videos/links shows a custom menu with "Download", "Copy Address", and "Open in Browser" options. Theme-aware (light/dark).
+- **Fullscreen polyfill**: HTML5 Fullscreen API (`requestFullscreen`) is bridged to native window fullscreen. Works with YouTube, Bilibili, etc. Escape exits fullscreen.
+- **Toast notifications**: In-page toast messages (bottom-right, auto-dismiss) for download status and other events.
+- **Notification API override**: Web `Notification` calls are forwarded to OS native notifications.
+- **Theme detection**: MutationObserver watches for page theme changes (`.dark` class, `data-theme` attribute, `color-scheme` style) and syncs with system preferences.
+- **Chinese IME fix**: Prevents `Process` key event propagation issues in Safari-based WebView.
+- **SPA navigation tracking**: Patches `history.pushState/replaceState` to detect client-side navigation for history menu.
+- **Window state memory**: Window size is saved to `settings.json` on resize and restored on next launch.
+
+### Menus
+
+The app menu includes:
+
+- **App menu**: New Window (if `multiWindow`), Reload, Toggle DevTools, Clear Site Data, Clear Cache & Restart, Close Window, Quit.
+- **Edit menu** (macOS): Undo, Redo, Cut, Copy, Paste, Select All, Copy URL (`Cmd+L`).
+- **View menu**: Zoom In/Out/Reset, Fullscreen toggle (macOS).
+- **Operations menu**: Back, Forward, Home, Refresh, History submenu (last 100 visited pages).
+- **Window menu**: Always on Top toggle (with checkmark), Compact/Standard/Wide presets.
+- **About menu**: Custom links configured via `about.items`.
 
 ### Navigation and popup (OAuth login)
 
@@ -222,12 +308,36 @@ See `packages/examples` for minimal Pake-style configs.
   "name": "Kimi",
   "url": "https://www.kimi.com",
   "icon": "https://example.com/icon.png",
+  "zoom": 100,
   "window": {
     "width": 1200,
     "height": 780,
     "minWidth": 960,
     "minHeight": 640,
-    "hideTitleBar": true
+    "hideTitleBar": true,
+    "alwaysOnTop": false,
+    "title": "Kimi AI"
+  },
+  "navigation": {
+    "forceInternalNavigation": false,
+    "internalUrlRegex": ".*\\.kimi\\.com",
+    "disabledWebShortcuts": false,
+    "newWindow": true
+  },
+  "instance": {
+    "multiInstance": false,
+    "activationShortcut": "CmdOrControl+Shift+K"
+  },
+  "runtime": {
+    "darkMode": false,
+    "debug": false,
+    "incognito": false,
+    "enableDragDrop": false,
+    "pastePlainText": false,
+    "multiWindow": false
+  },
+  "build": {
+    "appVersion": "1.0.0"
   },
   "about": {
     "enabled": true,

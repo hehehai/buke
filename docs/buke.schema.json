@@ -29,6 +29,10 @@
       "type": "string",
       "description": "Webview session partition (e.g. persist:default)."
     },
+    "zoom": {
+      "type": "number",
+      "description": "Zoom level (0.5-2.0 or 50-200; values >10 are divided by 100)."
+    },
     "allowlist": {
       "type": "array",
       "items": { "type": "string" },
@@ -36,7 +40,7 @@
     },
     "icon": {
       "type": "string",
-      "description": "App icon path or URL."
+      "description": "App icon path or URL. When omitted, fetches favicon from Google's favicon service."
     },
     "outDir": {
       "type": "string",
@@ -46,6 +50,10 @@
       "type": "string",
       "enum": ["dev", "canary", "stable"],
       "description": "Electrobun build environment."
+    },
+    "useLocalFile": {
+      "type": "string",
+      "description": "Path to a local HTML file to package instead of a URL."
     },
     "window": {
       "type": "object",
@@ -57,9 +65,11 @@
         "minHeight": { "type": "number" },
         "hideTitleBar": { "type": "boolean" },
         "fullscreen": { "type": "boolean" },
-        "maximized": { "type": "boolean" }
+        "maximized": { "type": "boolean" },
+        "alwaysOnTop": { "type": "boolean", "description": "Keep window above all others." },
+        "title": { "type": "string", "description": "Override window title." }
       },
-      "description": "Window size and title bar options."
+      "description": "Window size, title bar, and behavior options."
     },
     "tray": {
       "type": "object",
@@ -79,6 +89,93 @@
         "proxyUrl": { "type": "string" }
       },
       "description": "Webview network overrides."
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "forceInternalNavigation": {
+          "type": "boolean",
+          "description": "Redirect all navigations into main webview."
+        },
+        "internalUrlRegex": {
+          "type": "string",
+          "description": "Regex pattern for URLs to keep in-app."
+        },
+        "disabledWebShortcuts": {
+          "type": "boolean",
+          "description": "Block Ctrl/Cmd keyboard shortcuts on web page."
+        },
+        "newWindow": { "type": "boolean", "description": "Allow popup windows for auth flows." }
+      },
+      "description": "Navigation control settings."
+    },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "multiInstance": { "type": "boolean", "description": "Allow multiple app instances." },
+        "activationShortcut": {
+          "type": "string",
+          "description": "Global shortcut to toggle window visibility (e.g. CmdOrControl+Shift+P)."
+        }
+      },
+      "description": "App instance management."
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "darkMode": { "type": "boolean", "description": "Force dark color scheme in webview." },
+        "startToTray": {
+          "type": "boolean",
+          "description": "Start hidden (requires tray.enabled)."
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Enable verbose logging and auto-open DevTools."
+        },
+        "incognito": {
+          "type": "boolean",
+          "description": "Use non-persisting session (no cookies saved)."
+        },
+        "enableDragDrop": {
+          "type": "boolean",
+          "description": "Enable file drag and drop support."
+        },
+        "pastePlainText": { "type": "boolean", "description": "Force paste as plain text." },
+        "ignoreCertificateErrors": {
+          "type": "boolean",
+          "description": "Ignore TLS certificate errors."
+        },
+        "wasm": { "type": "boolean", "description": "Enable WebAssembly CORS isolation." },
+        "camera": {
+          "type": "boolean",
+          "description": "Request camera permission (macOS entitlement)."
+        },
+        "microphone": {
+          "type": "boolean",
+          "description": "Request microphone permission (macOS entitlement)."
+        },
+        "multiWindow": { "type": "boolean", "description": "Enable multi-window support via menu." }
+      },
+      "description": "Runtime behavior settings."
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "appVersion": { "type": "string", "description": "Application version string." },
+        "install": {
+          "type": "boolean",
+          "description": "Install app after build (macOS: cp to /Applications)."
+        },
+        "iterativeBuild": {
+          "type": "boolean",
+          "description": "Skip DMG/installer, produce app bundle only."
+        }
+      },
+      "description": "Build and distribution settings."
     },
     "inject": {
       "type": "object",

@@ -41,11 +41,14 @@ declare module "electrobun/bun" {
       frame: { x?: number; y?: number; width: number; height: number };
       titleBarStyle?: "hidden" | "hiddenInset" | "default";
       transparent?: boolean;
+      hidden?: boolean;
     });
     id: number;
     webview: BrowserView;
     static getById(id: number): BrowserWindow | undefined;
     setSize(width: number, height: number): void;
+    setAlwaysOnTop(flag: boolean): void;
+    setTitle(title: string): void;
     focus(): void;
     close(): void;
     minimize(): void;
@@ -75,7 +78,17 @@ declare module "electrobun/bun" {
     on(event: "tray-clicked", handler: (event: ElectrobunEvent) => void): void;
   }
 
-  export const Utils: { quit: () => void; paths: { userData: string } };
+  export const GlobalShortcut: {
+    register(accelerator: string, callback: () => void): boolean;
+    unregister(accelerator: string): void;
+    unregisterAll(): void;
+  };
+
+  export const Utils: {
+    quit: () => void;
+    paths: { userData: string };
+    showNotification: (options: { title: string; body: string }) => void;
+  };
 
   const Electrobun: {
     events: { on: (event: string, handler: (event: ElectrobunEvent) => void) => void };

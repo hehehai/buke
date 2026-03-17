@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { existsSync } from "node:fs";
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs, printHelp } from "./args";
@@ -17,6 +17,7 @@ import { deriveProjectInfo } from "./config";
 import { loadPackConfig } from "./config-file";
 import { VERSION } from "./constants";
 import { resolveCwd, resolveTemplateDir } from "./helpers";
+import { resolvePreset } from "./presets";
 import { runBunScript } from "./runner";
 import { applyProjectInfo, prepareOutDir, scaffoldProject, syncRuntimeConfig } from "./scaffold";
 
@@ -61,10 +62,22 @@ async function main() {
 }
 
 async function handleInit(flags: Record<string, string | boolean>, positionals: string[]) {
-  const urlInput = (flags.url as string) ?? positionals[0];
+  let urlInput = (flags.url as string) ?? positionals[0];
   if (!urlInput) {
     console.error("Missing URL. Example: buke init https://example.com");
     process.exit(1);
+  }
+
+  // Resolve preset
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(urlInput) && !urlInput.includes(".")) {
+    const preset = resolvePreset(urlInput);
+    if (preset) {
+      console.log(`Resolved preset: ${urlInput} → ${preset.url} (${preset.name})`);
+      urlInput = preset.url;
+      if (!flags.name) {
+        flags.name = preset.name;
+      }
+    }
   }
 
   const projectInfo = deriveProjectInfo(urlInput, flags);
@@ -96,20 +109,55 @@ async function handlePack(flags: Record<string, string | boolean>, positionals: 
   }
 
   const loadedConfig = configPath ? await loadPackConfig(configPath) : null;
-  const urlInput = (flags.url as string) ?? mutablePositionals[0] ?? loadedConfig?.config.url;
+  let rawUrlInput = (flags.url as string) ?? mutablePositionals[0] ?? loadedConfig?.config.url;
+
+  // Resolve preset names (e.g. "deepseek" → "https://chat.deepseek.com/")
+  let presetConfig: Record<string, unknown> | undefined;
+  if (
+    rawUrlInput &&
+    !/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(rawUrlInput) &&
+    !rawUrlInput.includes(".")
+  ) {
+    const preset = resolvePreset(rawUrlInput);
+    if (preset) {
+      console.log(`Resolved preset: ${rawUrlInput} → ${preset.url} (${preset.name})`);
+      rawUrlInput = preset.url;
+      if (!flags.name && !loadedConfig?.config.name) {
+        flags.name = preset.name;
+      }
+      presetConfig = preset.config;
+    }
+  }
+
+  const urlInput = rawUrlInput;
   if (!urlInput) {
     console.error("Missing URL. Example: buke pack https://example.com");
     console.error("Or use: buke pack --config ./buke.pack.json");
+    console.error("Or use a preset: buke pack deepseek");
     process.exit(1);
+  }
+
+  // Merge preset config into loaded config
+  const mergedConfig = loadedConfig?.config
+    ? { ...loadedConfig.config }
+    : presetConfig
+      ? ({ ...presetConfig } as Parameters<typeof deriveProjectInfo>[2])
+      : undefined;
+  if (mergedConfig && presetConfig?.allowlist && !mergedConfig.allowlist) {
+    mergedConfig.allowlist = presetConfig.allowlist as string[];
   }
 
   const projectInfo = deriveProjectInfo(
     urlInput,
     flags,
-    loadedConfig?.config,
+    mergedConfig,
     loadedConfig?.configDir ?? process.cwd(),
   );
-  const env = ((flags.env as string | undefined) ?? loadedConfig?.config.env)?.toLowerCase();
+  const env = (
+    (flags.env as string | undefined) ??
+    loadedConfig?.config?.env ??
+    (mergedConfig?.env as string | undefined)
+  )?.toLowerCase();
   const script = env ? `build:${env}` : "build:dev";
   const force = Boolean(flags.force);
   const refreshBuilder = Boolean(flags["refresh-builder"]);
@@ -148,6 +196,17 @@ async function handlePack(flags: Record<string, string | boolean>, positionals: 
     await cp(builder.workspaceDir, tempDir, { recursive: true });
     await applyProjectInfo(tempDir, projectInfo);
     await syncRuntimeConfig(tempDir, projectInfo, loadedConfig?.configDir ?? process.cwd());
+
+    // Inject app version into electrobun.config.ts if specified
+    if (projectInfo.buildConfig.appVersion) {
+      await injectAppVersion(tempDir, projectInfo.buildConfig.appVersion);
+    }
+
+    // Handle local file packaging
+    if (projectInfo.useLocalFile) {
+      await copyLocalFile(tempDir, projectInfo.useLocalFile);
+    }
+
     await runBunScript(tempDir, script);
 
     const buildDir = path.join(tempDir, "build");
@@ -161,12 +220,68 @@ async function handlePack(flags: Record<string, string | boolean>, positionals: 
     succeeded = true;
 
     console.log(`\n✔ App packaged at: ${outDir}\n`);
+
+    // Post-build install
+    if (projectInfo.buildConfig.install && process.platform === "darwin") {
+      await installMacOSApp(outDir, projectInfo.appName);
+    }
   } finally {
     if (succeeded) {
       await rm(tempRootDir, { recursive: true, force: true });
     } else {
       console.log(`\nTemporary build directory kept for inspection: ${tempDir}\n`);
     }
+  }
+}
+
+async function injectAppVersion(tempDir: string, version: string) {
+  const configPath = path.join(tempDir, "electrobun.config.ts");
+  if (!existsSync(configPath)) {
+    return;
+  }
+  const content = await readFile(configPath, "utf8");
+  const updated = content.replace(/version:\s*["'][^"']*["']/, `version: "${version}"`);
+  if (updated !== content) {
+    await writeFile(configPath, updated, "utf8");
+  }
+}
+
+async function copyLocalFile(tempDir: string, localFilePath: string) {
+  const resolved = path.isAbsolute(localFilePath)
+    ? localFilePath
+    : path.resolve(process.cwd(), localFilePath);
+  if (!existsSync(resolved)) {
+    console.error(`Local file not found: ${resolved}`);
+    process.exit(1);
+  }
+  const viewsDir = path.join(tempDir, "src", "views", "main");
+  const target = path.join(viewsDir, "local.html");
+  await cp(resolved, target);
+  console.log(`Local file copied: ${resolved} → ${target}`);
+}
+
+async function installMacOSApp(buildDir: string, appName: string) {
+  const { readdir } = await import("node:fs/promises");
+  const entries = await readdir(buildDir);
+  const appBundle = entries.find((e) => e.endsWith(".app"));
+  if (!appBundle) {
+    console.log("No .app bundle found for installation.");
+    return;
+  }
+
+  const source = path.join(buildDir, appBundle);
+  const dest = path.join("/Applications", appBundle);
+  console.log(`Installing: ${source} → ${dest}`);
+
+  const proc = Bun.spawn(["cp", "-R", source, dest], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const exitCode = await proc.exited;
+  if (exitCode === 0) {
+    console.log(`✔ Installed to ${dest}`);
+  } else {
+    console.log(`Failed to install (exit ${exitCode}). You may need sudo.`);
   }
 }
 
