@@ -12,7 +12,7 @@
     },
     "packages/cli": {
       "name": "@hehehai/buke",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "bin": {
         "buke": "dist/index.js",
       },
@@ -23,7 +23,7 @@
     },
     "packages/template": {
       "name": "__APP_SLUG__",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "electrobun": "1.16.0",
       },
@@ -54,9 +54,9 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@1.9.4", "", { "os": "win32", "cpu": "x64" }, "sha512-8Y5wMhVIPaWe6jw2H+KlEm4wP/f7EW3810ZLmDlrEEy5KvBsb9ECEfu/kMWD484ijfQ8+nIi0giMgu9g1UAuuA=="],
 
-    "@hehehai/buke": ["@hehehai/buke@workspace:packages/cli"],
-
     "@buke/examples": ["@buke/examples@workspace:packages/examples"],
+
+    "@hehehai/buke": ["@hehehai/buke@workspace:packages/cli"],
 
     "@malept/cross-spawn-promise": ["@malept/cross-spawn-promise@1.1.1", "", { "dependencies": { "cross-spawn": "^7.0.1" } }, "sha512-RTBGWL5FWQcg9orDOCcp4LvItNzUPcyEU9bwaeJX0rJ1IQxzucC48Y0/sQLp/g6t99IQgAlGIaesJS+gTn7tVQ=="],
 

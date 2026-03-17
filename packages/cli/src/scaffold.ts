@@ -127,7 +127,7 @@ export async function syncRuntimeConfig(
     name: projectInfo.appName,
     url: projectInfo.normalizedUrl,
     id: projectInfo.appId,
-    templateVersion: "0.1.0",
+    templateVersion: "0.2.0",
   };
 
   if (projectInfo.partition !== "persist:default") {
