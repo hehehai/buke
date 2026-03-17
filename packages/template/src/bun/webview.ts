@@ -24,7 +24,7 @@ export function buildNavigationRules(baseUrl: URL, allowlist: string[]) {
         ? new URL(trimmed)
         : new URL(`${baseUrl.protocol}//${trimmed}`);
       addHostRules(url.protocol.replace(":", ""), url.hostname);
-    } catch (error) {
+    } catch {
       console.log(`Invalid allowlist entry: ${trimmed}`);
     }
   };
@@ -102,7 +102,7 @@ export function applyUserAgentOverride(webview: BrowserView, userAgentOverride: 
         get: () => ua,
         configurable: true
       });
-    } catch (error) {}
+    } catch {}
   })();`;
   webview.executeJavascript(script);
 }

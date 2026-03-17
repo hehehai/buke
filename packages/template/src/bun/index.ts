@@ -137,76 +137,29 @@ const recordNavigationHistory = (rawUrl: string, title = "") => {
     return;
   }
 
-  const existed = navigationHistory.find((item) => item.url === entry);
-  navigationHistory = navigationHistory.filter((item) => item.url !== entry);
-  navigationHistory.unshift({
+  let existed: NavigationHistoryItem | undefined;
+  const filtered: NavigationHistoryItem[] = [];
+  for (const item of navigationHistory) {
+    if (item.url === entry) {
+      existed = item;
+    } else {
+      filtered.push(item);
+    }
+  }
+
+  filtered.unshift({
     url: entry,
     title: resolveHistoryTitle(title, existed),
   });
-  if (navigationHistory.length > MAX_HISTORY_ENTRIES) {
-    navigationHistory = navigationHistory.slice(0, MAX_HISTORY_ENTRIES);
-  }
-  refreshApplicationMenu();
+  navigationHistory =
+    filtered.length > MAX_HISTORY_ENTRIES ? filtered.slice(0, MAX_HISTORY_ENTRIES) : filtered;
+  scheduleMenuRefresh();
 };
 
 const getMainWindow = () =>
   mainWindow && BrowserWindow.getById(mainWindow.id) ? mainWindow : null;
 
 const ensureMainWindow = () => getMainWindow() ?? createMainWindow();
-
-type WebviewEventWithPayload = {
-  detail?: unknown;
-  data?: unknown;
-};
-
-function extractEventUrl(payload: unknown): string | null {
-  if (typeof payload === "string") {
-    const parsed = safeParseEventPayload(payload);
-    if (parsed !== null) {
-      return extractEventUrl(parsed);
-    }
-
-    const trimmed = payload.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const data = payload as {
-    url?: unknown;
-    href?: unknown;
-    detail?: unknown;
-    data?: unknown;
-  };
-
-  if (typeof data.url === "string") {
-    const trimmed = data.url.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  if (typeof data.href === "string") {
-    const trimmed = data.href.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  if (data.detail !== undefined) {
-    const nested: string | null = extractEventUrl(data.detail);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  if (data.data !== undefined) {
-    const nested: string | null = extractEventUrl(data.data);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-}
 
 function safeParseEventPayload(payload: string): unknown | null {
   const trimmed = payload.trim();
@@ -215,16 +168,23 @@ function safeParseEventPayload(payload: string): unknown | null {
   }
   try {
     return JSON.parse(trimmed);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
 
-function extractNavigationAllowed(payload: unknown): boolean | null {
+/**
+ * Recursively unwraps nested event payloads (detail/data wrappers, JSON strings)
+ * and returns the first value matched by the provided extractor function.
+ */
+function extractNestedField<T>(
+  payload: unknown,
+  extract: (obj: Record<string, unknown>) => T | null,
+): T | null {
   if (typeof payload === "string") {
     const parsed = safeParseEventPayload(payload);
     if (parsed !== null) {
-      return extractNavigationAllowed(parsed);
+      return extractNestedField(parsed, extract);
     }
     return null;
   }
@@ -233,66 +193,49 @@ function extractNavigationAllowed(payload: unknown): boolean | null {
     return null;
   }
 
-  const data = payload as {
-    allowed?: unknown;
-    detail?: unknown;
-    data?: unknown;
-    [key: string]: unknown;
-  };
-
-  if (typeof data.allowed === "boolean") {
-    return data.allowed;
+  const data = payload as Record<string, unknown>;
+  const found = extract(data);
+  if (found !== null) {
+    return found;
   }
 
-  if (data.detail !== undefined) {
-    const nested: boolean | null = extractNavigationAllowed(data.detail);
-    if (nested !== null) {
-      return nested;
-    }
-  }
-
-  if (data.data !== undefined) {
-    const nested: boolean | null = extractNavigationAllowed(data.data);
-    if (nested !== null) {
-      return nested;
+  for (const key of ["detail", "data"] as const) {
+    if (data[key] !== undefined) {
+      const nested = extractNestedField(data[key], extract);
+      if (nested !== null) {
+        return nested;
+      }
     }
   }
 
   return null;
 }
 
-function extractPopupUrl(event: WebviewEventWithPayload) {
-  const candidates = [event.detail, event.data];
-  for (const candidate of candidates) {
-    const url = extractUrl(candidate);
-    if (url) {
-      return url;
-    }
+function nonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
   }
-  return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
-function extractUrl(payload: unknown) {
+function extractEventUrl(payload: unknown): string | null {
+  // Top-level strings may be a raw URL (not just a JSON wrapper), so handle separately
   if (typeof payload === "string") {
-    const trimmed = payload.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    const parsed = safeParseEventPayload(payload);
+    if (parsed !== null) {
+      return extractEventUrl(parsed);
+    }
+    return nonEmptyString(payload);
   }
 
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
+  return extractNestedField(payload, (obj) => nonEmptyString(obj.url) ?? nonEmptyString(obj.href));
+}
 
-  const detail = payload as { url?: unknown; href?: unknown; detail?: unknown };
-  if (typeof detail.url === "string") {
-    const trimmed = detail.url.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof detail.href === "string") {
-    const trimmed = detail.href.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  return extractUrl(detail.detail);
+function extractNavigationAllowed(payload: unknown): boolean | null {
+  return extractNestedField(payload, (obj) =>
+    typeof obj.allowed === "boolean" ? obj.allowed : null,
+  );
 }
 
 const resolveContentWebview = () => {
@@ -340,7 +283,7 @@ const isOAuthPopupUrl = (rawUrl: string) => {
       parsed.pathname.includes("/signin") ||
       parsed.pathname.includes("/login")
     );
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -397,24 +340,14 @@ const isAllowedPopupHost = (rawUrl: string) => {
         return true;
       }
 
-      const wildcardMatch = (() => {
-        const schemeIndex = trimmed.indexOf("://");
-        if (schemeIndex === -1) {
-          return null;
-        }
-
+      const schemeIndex = trimmed.indexOf("://");
+      if (schemeIndex !== -1) {
         const hostPart = trimmed.slice(schemeIndex + 3).split("/")[0] ?? "";
-        if (!hostPart.startsWith("*.") || hostPart.length <= 2) {
-          return null;
-        }
-
-        const suffix = hostPart.slice(2).toLowerCase();
-        return suffix ? [suffix] : null;
-      })();
-      if (wildcardMatch?.[0]) {
-        const suffix = wildcardMatch[0];
-        if (targetHost === suffix || targetHost.endsWith(`.${suffix}`)) {
-          return true;
+        if (hostPart.startsWith("*.") && hostPart.length > 2) {
+          const suffix = hostPart.slice(2).toLowerCase();
+          if (suffix && (targetHost === suffix || targetHost.endsWith(`.${suffix}`))) {
+            return true;
+          }
         }
       }
 
@@ -505,7 +438,7 @@ const openPopupWindow = (url: string) => {
 
   popup.webview.setNavigationRules(applyPopupNavigationRules(url));
   popup.webview.on("new-window-open", (event) => {
-    const popupUrl = extractPopupUrl(event);
+    const popupUrl = extractEventUrl(event);
     if (!popupUrl) {
       return;
     }
@@ -600,14 +533,27 @@ const goHomeInMainWebview = () => {
   navigateInMainWebview(BASE_URL.href);
 };
 
-const handleNavigationHistoryEvent = (rawEvent: unknown, _webview: BrowserView | null) => {
-  if (rawEvent) {
-    const url = extractEventUrl(rawEvent);
-    if (!url || url.startsWith("about:blank")) {
-      return;
-    }
-    recordNavigationHistory(url);
+const NAV_DEDUP_WINDOW_MS = 200;
+let lastNavEventUrl = "";
+let lastNavEventTime = 0;
+
+const handleNavigationHistoryEvent = (rawEvent: unknown) => {
+  if (!rawEvent) {
+    return;
   }
+  const url = extractEventUrl(rawEvent);
+  if (!url || url.startsWith("about:blank")) {
+    return;
+  }
+
+  const now = Date.now();
+  if (url === lastNavEventUrl && now - lastNavEventTime < NAV_DEDUP_WINDOW_MS) {
+    return;
+  }
+  lastNavEventUrl = url;
+  lastNavEventTime = now;
+
+  recordNavigationHistory(url);
 };
 
 const handleHostMessage = (event: unknown) => {
@@ -619,18 +565,16 @@ const handleHostMessage = (event: unknown) => {
     return;
   }
   const detail = (data as { detail?: unknown }).detail;
-  const payload =
-    typeof detail === "string"
-      ? (() => {
-          try {
-            return JSON.parse(detail);
-          } catch {
-            return null;
-          }
-        })()
-      : detail && typeof detail === "object"
-        ? detail
-        : null;
+
+  let payload: unknown;
+  if (typeof detail === "string") {
+    payload = safeParseEventPayload(detail);
+  } else if (detail && typeof detail === "object") {
+    payload = detail;
+  } else {
+    return;
+  }
+
   if (!payload || typeof payload !== "object") {
     return;
   }
@@ -641,11 +585,14 @@ const handleHostMessage = (event: unknown) => {
   recordNavigationHistory(nav.url, typeof nav.title === "string" ? nav.title : "");
 };
 
+let navigationRulesApplied = false;
+
 const applyNavigationRules = () => {
   const webview = resolveContentWebview();
-  if (!webview) {
+  if (!webview || navigationRulesApplied) {
     return;
   }
+  navigationRulesApplied = true;
 
   if (BASE_URL) {
     webview.setNavigationRules(
@@ -655,25 +602,25 @@ const applyNavigationRules = () => {
       const blockedUrl = extractEventUrl(event) ?? "unknown";
       const allowed = extractNavigationAllowed(event);
       if (allowed !== false) {
-        handleNavigationHistoryEvent(event, webview);
+        handleNavigationHistoryEvent(event);
         return;
       }
       console.log(`Navigation blocked: ${blockedUrl}`);
     });
     webview.on("did-commit-navigation", (event) => {
-      handleNavigationHistoryEvent(event, webview);
+      handleNavigationHistoryEvent(event);
     });
     webview.on("did-navigate", (event) => {
-      handleNavigationHistoryEvent(event, webview);
+      handleNavigationHistoryEvent(event);
     });
     webview.on("did-navigate-in-page", (event) => {
-      handleNavigationHistoryEvent(event, webview);
+      handleNavigationHistoryEvent(event);
     });
     webview.on("did-finish-load", (event) => {
-      handleNavigationHistoryEvent(event, webview);
+      handleNavigationHistoryEvent(event);
     });
     webview.on("new-window-open", (event) => {
-      const url = extractPopupUrl(event);
+      const url = extractEventUrl(event);
       if (!url) {
         return;
       }
@@ -819,6 +766,8 @@ const applyWindowPreset = (preset: keyof typeof WINDOW_PRESETS) => {
   win.focus();
 };
 
+const MENU_REFRESH_DELAY_MS = 120;
+
 const aboutMenu = buildAboutMenu(bukeConfig.about, APP_NAME, APP_URL);
 const refreshApplicationMenu = () => {
   buildMenu(
@@ -830,6 +779,17 @@ const refreshApplicationMenu = () => {
     APP_I18N_MENU,
     APP_LOCALE,
   );
+};
+
+let menuRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+const scheduleMenuRefresh = () => {
+  if (menuRefreshTimer !== null) {
+    clearTimeout(menuRefreshTimer);
+  }
+  menuRefreshTimer = setTimeout(() => {
+    menuRefreshTimer = null;
+    refreshApplicationMenu();
+  }, MENU_REFRESH_DELAY_MS);
 };
 
 const menuHandlers = {
@@ -922,6 +882,7 @@ function createMainWindow() {
 
   mainWindow = win;
   contentWebview = null;
+  navigationRulesApplied = false;
 
   const controllableWindow = win as BrowserWindow & {
     maximize(): void;
