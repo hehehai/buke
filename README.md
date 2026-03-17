@@ -69,8 +69,8 @@ bun run dev:template:kimi
 Releases are driven by Git tags:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.1
+git push origin v0.2.1
 ```
 
 The release workflow publishes:
@@ -78,6 +78,7 @@ The release workflow publishes:
 - GitHub Release assets
 - npm package `@hehehai/buke`
 - Homebrew formula `hehehai/tap/buke`
+- popular app bundles for macOS arm64/x64, Linux x64, and Windows x64
 
 ## Docs
 

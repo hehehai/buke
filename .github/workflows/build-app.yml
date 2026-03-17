@@ -40,21 +40,21 @@ jobs:
   build:
     name: ${{ inputs.name }} (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos-arm64
             os: macos-latest
-          # Electrobun currently builds for the host platform only.
-          # Add more runners here when cross-compilation or other
-          # platforms are supported.
-          # - platform: macos-x64
-          #   os: macos-13
-          # - platform: linux-x64
-          #   os: ubuntu-latest
-          # - platform: windows-x64
-          #   os: windows-latest
+          - platform: macos-x64
+            os: macos-13
+          - platform: linux-x64
+            os: ubuntu-latest
+          - platform: windows-x64
+            os: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -77,11 +77,20 @@ jobs:
             --out "output/${{ inputs.name }}" \
             --force
 
+      - name: Collect release assets
+        run: |
+          bun run scripts/collect-app-release-assets.ts \
+            --input-dir "output/${{ inputs.name }}" \
+            --output-dir "release/${{ inputs.name }}-${{ matrix.platform }}" \
+            --app-name "${{ inputs.name }}" \
+            --platform "${{ matrix.platform }}" \
+            --channel "${{ inputs.env || 'dev' }}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.name }}-${{ matrix.platform }}
-          path: output/${{ inputs.name }}/**
+          path: release/${{ inputs.name }}-${{ matrix.platform }}/**
           retention-days: 7
           if-no-files-found: warn
 
@@ -89,4 +98,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: output/${{ inputs.name }}/**
+          files: release/${{ inputs.name }}-${{ matrix.platform }}/**

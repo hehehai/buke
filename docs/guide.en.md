@@ -271,7 +271,7 @@ Electrobun packages for the **current host platform**:
 - Windows: run `buke pack` on Windows
 - Linux: run `buke pack` on Linux
 
-For CI, run per-OS jobs and compare sizes with `du -sh dist/*` (macOS/Linux) or `Get-ChildItem dist -Recurse | Measure-Object -Property Length -Sum` (Windows).
+For CI, run per-OS jobs. This repository's release workflow now builds app bundles on `macos-latest`, `macos-13`, `ubuntu-latest`, and `windows-latest`, then publishes only renamed archive assets such as `excalidraw-stable-macos-arm64.tar.zst` instead of raw internal Electrobun files.
 
 ## Override Rules
 
